@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { BehaviorTracker } from "@/components/behavior/BehaviorTracker";
 import { BehaviorTimeline } from "@/components/behavior/BehaviorTimeline";
 import { InsightCard } from "@/components/behavior/InsightCard";
+import { TriggerConsequenceAnalysis } from "@/components/behavior/TriggerConsequenceAnalysis";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -20,7 +21,8 @@ import {
   Activity,
   ArrowLeft,
   BarChart3,
-  Loader2
+  Loader2,
+  Zap
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format } from "date-fns";
@@ -81,6 +83,8 @@ export default function BehaviorPatternsPage() {
   const [observations, setObservations] = useState<BehaviorObservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAnalyzingTriggers, setIsAnalyzingTriggers] = useState(false);
+  const [triggerAnalysis, setTriggerAnalysis] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -147,6 +151,32 @@ export default function BehaviorPatternsPage() {
     }
   }
 
+  async function analyzeTriggersAndConsequences() {
+    setIsAnalyzingTriggers(true);
+    try {
+      const response = await fetch("/api/ai/analyze-triggers-consequences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to analyze triggers and consequences");
+      }
+
+      const result = await response.json();
+      setTriggerAnalysis(result.analysis);
+      toast.success(`Analysis completed! ${result.insightsCreated} insights created.`);
+      await loadData();
+    } catch (error: any) {
+      console.error("Error analyzing triggers:", error);
+      toast.error(error.message || "Failed to analyze triggers and consequences");
+    } finally {
+      setIsAnalyzingTriggers(false);
+    }
+  }
+
   async function handleToggleVisibility(insightId: string, newVisibility: "coach_only" | "client_shared") {
     const supabase = createClient();
     const { error } = await supabase
@@ -203,19 +233,34 @@ export default function BehaviorPatternsPage() {
             </div>
           </div>
 
-          <Button onClick={analyzePatterns} disabled={isAnalyzing} className="gap-2">
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Analyze Patterns
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={analyzeTriggersAndConsequences} disabled={isAnalyzingTriggers} className="gap-2" variant="default">
+              {isAnalyzingTriggers ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analizando...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4" />
+                  Analizar Triggers
+                </>
+              )}
+            </Button>
+            <Button onClick={analyzePatterns} disabled={isAnalyzing} className="gap-2" variant="outline">
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analizando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Analizar Patrones
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -260,14 +305,48 @@ export default function BehaviorPatternsPage() {
           </Card>
         </div>
 
-        <Tabs defaultValue="insights" className="space-y-4">
+        <Tabs defaultValue="trigger-analysis" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="trigger-analysis">Análisis Triggers</TabsTrigger>
             <TabsTrigger value="insights">Insights</TabsTrigger>
             <TabsTrigger value="patterns">Patterns</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="track">Track New</TabsTrigger>
             <TabsTrigger value="trends">Trends</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="trigger-analysis" className="space-y-4">
+            {!triggerAnalysis ? (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center space-y-4">
+                    <Zap className="h-12 w-12 text-slate-400 mx-auto" />
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Análisis de Triggers y Consecuencias</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Utiliza IA para identificar disparadores de comportamientos, consecuencias y puntos de intervención.
+                      </p>
+                      <Button onClick={analyzeTriggersAndConsequences} disabled={isAnalyzingTriggers} className="gap-2">
+                        {isAnalyzingTriggers ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Analizando con IA...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="h-4 w-4" />
+                            Iniciar Análisis
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <TriggerConsequenceAnalysis analysisData={triggerAnalysis} />
+            )}
+          </TabsContent>
 
           <TabsContent value="insights" className="space-y-4">
             {insights.length === 0 ? (
