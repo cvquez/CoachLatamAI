@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Brain, Users, Calendar, DollarSign, Target, TrendingUp, Sparkles, CheckCircle } from 'lucide-react'
+import { Brain, Users, Calendar, DollarSign, Target, TrendingUp, Sparkles, CheckCircle, Search, Star } from 'lucide-react'
 
 export default function Home() {
   return (
@@ -17,10 +17,16 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" asChild>
+                <Link href="/marketplace">
+                  <Search className="h-4 w-4 mr-2" />
+                  Find a Coach
+                </Link>
+              </Button>
+              <Button variant="ghost" asChild>
                 <Link href="/login">Iniciar Sesión</Link>
               </Button>
               <Button asChild>
-                <Link href="/register">Comenzar Gratis</Link>
+                <Link href="/register?type=coach">Become a Coach</Link>
               </Button>
             </div>
           </div>
@@ -34,18 +40,42 @@ export default function Home() {
             Plataforma con IA integrada
           </div>
           <h1 className="text-5xl font-bold text-slate-900 mb-6">
-            La plataforma todo-en-uno para coaches profesionales
+            Conecta con el Coach Perfecto o Gestiona tu Práctica
           </h1>
           <p className="text-xl text-slate-600 mb-8">
-            Gestiona clientes, sesiones, objetivos y pagos desde un solo lugar. Con inteligencia artificial para potenciar tu práctica de coaching.
+            Encuentra coaches expertos certificados o gestiona tu práctica de coaching con herramientas inteligentes todo-en-uno.
           </p>
-          <div className="flex gap-4 justify-center">
-            <Button size="lg" className="text-lg px-8" asChild>
-              <Link href="/register">Comenzar Gratis</Link>
-            </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8" asChild>
-              <Link href="/pricing">Ver Planes</Link>
-            </Button>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-8">
+            <Card className="border-2 border-blue-200 hover:border-blue-400 transition-colors cursor-pointer">
+              <CardContent className="p-8 text-center">
+                <div className="bg-blue-100 p-4 rounded-full w-fit mx-auto mb-4">
+                  <Search className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">Busco un Coach</h3>
+                <p className="text-slate-600 mb-6">
+                  Encuentra coaches expertos que te ayudarán a alcanzar tus metas
+                </p>
+                <Button size="lg" className="w-full" asChild>
+                  <Link href="/marketplace">Explorar Coaches</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-purple-200 hover:border-purple-400 transition-colors cursor-pointer">
+              <CardContent className="p-8 text-center">
+                <div className="bg-purple-100 p-4 rounded-full w-fit mx-auto mb-4">
+                  <Star className="h-8 w-8 text-purple-600" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">Soy Coach</h3>
+                <p className="text-slate-600 mb-6">
+                  Gestiona tu práctica y encuentra nuevos clientes fácilmente
+                </p>
+                <Button size="lg" variant="outline" className="w-full" asChild>
+                  <Link href="/register?type=coach">Comenzar Gratis</Link>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
@@ -123,30 +153,52 @@ export default function Home() {
           </Card>
         </div>
 
-        <div className="bg-white rounded-2xl p-12 text-center">
-          <h2 className="text-3xl font-bold text-slate-900 mb-6">
-            Comienza tu prueba gratuita hoy
-          </h2>
-          <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">
-            Únete a cientos de coaches que ya están transformando su práctica con CoachHub
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <div className="flex items-center gap-2 text-slate-600">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span>Sin tarjeta de crédito</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-600">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span>Configuración en minutos</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-600">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span>Soporte incluido</span>
-            </div>
+        <div className="grid md:grid-cols-2 gap-8 mb-12">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-8 text-white">
+            <h2 className="text-3xl font-bold mb-4">Para Clientes</h2>
+            <p className="text-blue-100 mb-6">
+              Descubre coaches certificados en el marketplace y comienza tu viaje de transformación personal
+            </p>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                <span>Explora perfiles verificados</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                <span>Lee reseñas reales</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                <span>Contacta directamente</span>
+              </li>
+            </ul>
+            <Button size="lg" variant="secondary" className="w-full" asChild>
+              <Link href="/marketplace">Buscar Coaches</Link>
+            </Button>
           </div>
-          <div className="mt-8">
-            <Button size="lg" className="text-lg px-12" asChild>
-              <Link href="/register">Comenzar Ahora</Link>
+
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-8 text-white">
+            <h2 className="text-3xl font-bold mb-4">Para Coaches</h2>
+            <p className="text-purple-100 mb-6">
+              Gestiona tu práctica con herramientas profesionales y encuentra nuevos clientes
+            </p>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                <span>Dashboard con IA</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                <span>Perfil en marketplace</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                <span>Gestión completa</span>
+              </li>
+            </ul>
+            <Button size="lg" variant="secondary" className="w-full" asChild>
+              <Link href="/register?type=coach">Comenzar Gratis</Link>
             </Button>
           </div>
         </div>
