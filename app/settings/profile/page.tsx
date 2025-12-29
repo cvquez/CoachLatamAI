@@ -115,14 +115,14 @@ export default function CoachProfilePage() {
     } else {
       const { data: userData } = await supabase
         .from("users")
-        .select("name, email")
+        .select("full_name, email")
         .eq("id", user.id)
         .maybeSingle();
 
       if (userData) {
         setFormData((prev) => ({
           ...prev,
-          display_name: userData.name || "",
+          display_name: userData.full_name || "",
         }));
       }
     }

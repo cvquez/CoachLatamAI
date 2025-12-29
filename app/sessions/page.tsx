@@ -28,11 +28,15 @@ export default function SessionsPage() {
         return
       }
 
-      const { data: sessionsData } = await supabase
+      const { data: sessionsData, error } = await supabase
         .from('sessions')
-        .select('*, clients(name)')
+        .select('*, clients(full_name)')
         .eq('coach_id', user.id)
         .order('scheduled_date', { ascending: true })
+
+      if (error) {
+        console.error('Error loading sessions:', error)
+      }
 
       setSessions(sessionsData || [])
       setLoading(false)
@@ -153,7 +157,7 @@ export default function SessionsPage() {
                                 hover:opacity-80 cursor-pointer
                               `}
                             >
-                              {format(parseISO(s.scheduled_date), 'HH:mm')} {s.clients?.name}
+                              {format(parseISO(s.scheduled_date), 'HH:mm')} {s.clients?.full_name}
                             </div>
                           </Link>
                         ))}
@@ -191,7 +195,7 @@ export default function SessionsPage() {
                     <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 transition-colors">
                       <div className="flex-1">
                         <h3 className="font-medium text-slate-900">{s.title}</h3>
-                        <p className="text-sm text-slate-600">{s.clients?.name}</p>
+                        <p className="text-sm text-slate-600">{s.clients?.full_name}</p>
                       </div>
                       <div className="text-right mr-4">
                         <p className="text-sm font-medium text-slate-900">

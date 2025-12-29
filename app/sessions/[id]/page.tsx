@@ -68,7 +68,7 @@ export default function SessionDetailPage() {
 
     const { data, error } = await supabase
       .from('sessions')
-      .select('*, clients(name, email)')
+	.select('*, clients(full_name, email)') 
       .eq('id', sessionId)
       .maybeSingle();
 
@@ -243,12 +243,12 @@ export default function SessionDetailPage() {
               </div>
             </div>
 
-            {session.description && (
+            {session.notes && (
               <>
                 <Separator />
                 <div>
                   <h4 className="font-semibold mb-2">Descripción</h4>
-                  <p className="text-slate-700 whitespace-pre-wrap">{session.description}</p>
+                  <p className="text-slate-700 whitespace-pre-wrap">{session.notes}</p>
                 </div>
               </>
             )}

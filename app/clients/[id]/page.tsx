@@ -84,6 +84,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   const { client, sessions, goals, actionPlans } = data
 
   const getInitials = (name: string) => {
+    if (!name) return '??'
     return name
       .split(' ')
       .map((n) => n[0])
@@ -144,12 +145,12 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
             <div className="flex items-start gap-6">
               <Avatar className="h-24 w-24">
                 <AvatarImage src={client.profile_image} />
-                <AvatarFallback className="text-2xl">{getInitials(client.name)}</AvatarFallback>
+                <AvatarFallback className="text-2xl">{getInitials(client.full_name)}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">{client.name}</h1>
+                    <h1 className="text-3xl font-bold text-slate-900 mb-2">{client.full_name}</h1>
                     <Badge className={getStatusColor(client.status)}>
                       {getStatusLabel(client.status)}
                     </Badge>

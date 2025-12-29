@@ -71,6 +71,7 @@ export default function ClientsPage() {
   }
 
   const getInitials = (name: string) => {
+    if (!name) return '??'
     return name
       .split(' ')
       .map((n) => n[0])
@@ -152,14 +153,14 @@ export default function ClientsPage() {
                     <div className="flex items-start justify-between mb-4">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={client.profile_image} />
-                        <AvatarFallback>{getInitials(client.name)}</AvatarFallback>
+                        <AvatarFallback>{getInitials(client.full_name)}</AvatarFallback>
                       </Avatar>
                       <Badge className={getStatusColor(client.status)}>
                         {getStatusLabel(client.status)}
                       </Badge>
                     </div>
                     <h3 className="font-semibold text-lg text-slate-900 mb-2">
-                      {client.name}
+                      {client.full_name}
                     </h3>
                     <div className="space-y-2 text-sm text-slate-600">
                       <div className="flex items-center gap-2">

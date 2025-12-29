@@ -26,7 +26,7 @@ export default function SessionResultsPage() {
 
       const { data: sessionData } = await supabase
         .from('sessions')
-        .select('*, clients(name)')
+        .select('*, clients(full_name)')
         .eq('id', sessionId)
         .maybeSingle();
 
@@ -85,7 +85,7 @@ export default function SessionResultsPage() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Resultados de Sesión</h1>
             <p className="text-slate-600 mt-1">
-              {session.title} - {session.clients?.name}
+              {session.title} - {session.clients?.full_name}
             </p>
           </div>
         </div>

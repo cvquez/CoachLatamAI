@@ -74,7 +74,7 @@ export default function NewClientPage() {
         .from('clients')
         .insert({
           coach_id: session.user.id,
-          name,
+          full_name: name,  // Cambiado de 'name' a 'full_name'
           email,
           phone: phone || null,
           notes: notes || null,
@@ -82,10 +82,11 @@ export default function NewClientPage() {
         })
 
       if (error) {
+        console.error('Error creating client:', error)
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'No se pudo crear el cliente',
+          description: `No se pudo crear el cliente: ${error.message}`,
         })
         return
       }

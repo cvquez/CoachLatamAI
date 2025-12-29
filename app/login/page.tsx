@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2, Brain } from 'lucide-react'
+import { Loader2, Brain, Sparkles } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -80,12 +80,22 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <div className="flex items-center space-x-2">
-            <div className="bg-slate-900 p-2 rounded-lg">
-              <Brain className="h-8 w-8 text-white" />
+          <Link href="/" className="inline-flex items-center space-x-2.5 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-blue-500 to-brand-cyan-500 rounded-xl blur-sm opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+              <div className="relative bg-gradient-to-br from-brand-blue-500 to-brand-cyan-500 p-2.5 rounded-xl shadow-brand-blue">
+                <Sparkles className="h-8 w-8 text-white" strokeWidth={2.5} />
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-slate-900">CoachHub</h1>
-          </div>
+            <div className="flex flex-col items-start">
+              <span className="text-3xl font-bold bg-gradient-to-r from-brand-blue-600 to-brand-cyan-600 bg-clip-text text-transparent">
+                CoachLatamAI
+              </span>
+              <span className="text-[10px] text-brand-blue-500/70 font-medium tracking-widest uppercase">
+                AI-Powered Coaching
+              </span>
+            </div>
+          </Link>
         </div>
 
         <Card>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Star, MapPin, DollarSign, CheckCircle, Calendar } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CoachCardProps {
   coach: {
@@ -29,6 +30,8 @@ interface CoachCardProps {
 }
 
 export function CoachCard({ coach }: CoachCardProps) {
+  const { t } = useLanguage();
+  
   const initials = coach.display_name
     .split(" ")
     .map((n) => n[0])
@@ -42,17 +45,34 @@ export function CoachCard({ coach }: CoachCardProps) {
     not_accepting: "bg-slate-100 text-slate-800 border-slate-200",
   };
 
-  const availabilityLabels = {
-    available: "Available",
-    busy: "Limited Availability",
-    not_accepting: "Not Accepting",
+  const getAvailabilityLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      available: t('availability.available'),
+      busy: t('availability.busy'),
+      not_accepting: t('availability.not_accepting'),
+    };
+    return labels[status] || status;
+  };
+
+  const translateLanguage = (lang: string) => {
+    const langMap: Record<string, string> = {
+      'English': t('lang.english'),
+      'Spanish': t('lang.spanish'),
+      'Español': t('lang.spanish'),
+      'French': t('lang.french'),
+      'German': t('lang.german'),
+      'Portuguese': t('lang.portuguese'),
+      'Italian': t('lang.italian'),
+      'Mandarin': t('lang.mandarin'),
+    };
+    return langMap[lang] || lang;
   };
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
       {coach.is_featured && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold py-1 px-3 text-center">
-          Featured Coach
+          {t('coach.featured')}
         </div>
       )}
 
@@ -95,7 +115,7 @@ export function CoachCard({ coach }: CoachCardProps) {
                 <>
                   <span className="text-slate-300">•</span>
                   <span className="text-xs text-muted-foreground">
-                    {coach.years_experience}+ years
+                    {coach.years_experience}+ {t('coach.years')}
                   </span>
                 </>
               )}
@@ -126,7 +146,9 @@ export function CoachCard({ coach }: CoachCardProps) {
 
           {coach.languages.length > 0 && (
             <div className="flex items-center gap-1">
-              <span className="text-xs">{coach.languages.join(", ")}</span>
+              <span className="text-xs">
+                {coach.languages.map(lang => translateLanguage(lang)).join(", ")}
+              </span>
             </div>
           )}
         </div>
@@ -137,7 +159,7 @@ export function CoachCard({ coach }: CoachCardProps) {
             className={availabilityColors[coach.availability_status as keyof typeof availabilityColors]}
           >
             <Calendar className="h-3 w-3 mr-1" />
-            {availabilityLabels[coach.availability_status as keyof typeof availabilityLabels]}
+            {getAvailabilityLabel(coach.availability_status)}
           </Badge>
         </div>
       </CardContent>
@@ -146,12 +168,12 @@ export function CoachCard({ coach }: CoachCardProps) {
         <div className="flex items-baseline gap-1">
           <DollarSign className="h-4 w-4 text-muted-foreground" />
           <span className="text-xl font-bold">{coach.session_rate}</span>
-          <span className="text-sm text-muted-foreground">/{coach.currency} per session</span>
+          <span className="text-sm text-muted-foreground">/{coach.currency} {t('coach.per_session')}</span>
         </div>
 
         <Link href={`/marketplace/coaches/${coach.id}`}>
           <Button size="sm" className="gap-2">
-            View Profile
+            {t('coach.view_profile')}
           </Button>
         </Link>
       </CardFooter>

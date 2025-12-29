@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
+import { DashboardLayout } from '@/components/layouts/dashboard-layout'
 import type { CompetencyFramework, Competency } from '@/lib/types/database.types'
 
 interface FrameworkWithCompetencies extends CompetencyFramework {
@@ -178,14 +179,17 @@ export default function FrameworksPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">Cargando...</div>
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">Cargando...</div>
+        </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <DashboardLayout>
+      <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">Frameworks de Competencias</h1>
@@ -353,5 +357,6 @@ export default function FrameworksPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </DashboardLayout>
   )
 }

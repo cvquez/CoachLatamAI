@@ -148,7 +148,7 @@ export default function ClientEvaluationsPage() {
       <div className="flex justify-between items-start mb-8">
         <div>
           <h1 className="text-3xl font-bold">Evaluaciones de Competencias</h1>
-          <p className="text-gray-600 mt-2">{client.name}</p>
+          <p className="text-gray-600 mt-2">{client.full_name}</p>
         </div>
         <Button onClick={() => router.push(`/clients/${params.id}/evaluations/new`)}>
           <Plus className="mr-2 h-4 w-4" />

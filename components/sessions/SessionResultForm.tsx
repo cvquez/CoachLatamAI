@@ -85,6 +85,7 @@ export function SessionResultForm({ sessionId, initialData, onSave }: SessionRes
       await supabase
         .from('sessions')
         .update({
+          status: 'completed',
           pre_session_mood: formData.preSessionMood,
           post_session_mood: formData.postSessionMood,
           energy_level_start: formData.energyLevelStart,

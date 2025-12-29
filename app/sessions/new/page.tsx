@@ -21,7 +21,7 @@ export default function NewSessionPage() {
   const [scheduledDate, setScheduledDate] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
   const [duration, setDuration] = useState('60')
-  const [sessionType, setSessionType] = useState<'online' | 'presencial'>('online')
+  const [sessionType, setSessionType] = useState<'individual' | 'group' | 'workshop' | 'assessment'>('individual')
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -35,10 +35,10 @@ export default function NewSessionPage() {
 
       const { data } = await supabase
         .from('clients')
-        .select('id, name, status')
+        .select('id, full_name, status')
         .eq('coach_id', session.user.id)
         .eq('status', 'active')
-        .order('name')
+        .order('full_name')
 
       setClients(data || [])
 
@@ -84,7 +84,7 @@ export default function NewSessionPage() {
           coach_id: session.user.id,
           client_id: clientId,
           title,
-          description: description || null,
+          notes: description || null,  // Cambiado de 'description' a 'notes'
           scheduled_date: scheduledDateTime.toISOString(),
           duration: parseInt(duration),
           session_type: sessionType,
@@ -92,10 +92,11 @@ export default function NewSessionPage() {
         })
 
       if (error) {
+        console.error('Error creating session:', error)  // Log para debug
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'No se pudo crear la sesión',
+          description: `No se pudo crear la sesión: ${error.message}`,  // Mensaje detallado
         })
         return
       }
@@ -150,7 +151,7 @@ export default function NewSessionPage() {
                   <SelectContent>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
-                        {client.name}
+                        {client.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -236,8 +237,10 @@ export default function NewSessionPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="online">Online</SelectItem>
-                      <SelectItem value="presencial">Presencial</SelectItem>
+                      <SelectItem value="individual">Individual</SelectItem>
+                      <SelectItem value="group">Grupal</SelectItem>
+                      <SelectItem value="workshop">Taller</SelectItem>
+                      <SelectItem value="assessment">Evaluación</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

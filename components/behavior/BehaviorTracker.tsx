@@ -28,8 +28,8 @@ interface BehaviorTrackerProps {
 }
 
 const EMOTIONAL_STATES = [
-  "Calm", "Anxious", "Excited", "Frustrated", "Confident", "Uncertain",
-  "Motivated", "Overwhelmed", "Hopeful", "Discouraged", "Angry", "Content"
+  "Calmado", "Ansioso", "Emocionado", "Frustrado", "Confiado", "Inseguro",
+  "Motivado", "Abrumado", "Esperanzado", "Desanimado", "Enojado", "Contento"
 ];
 
 export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTrackerProps) {
@@ -58,7 +58,7 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
       .order("name");
 
     if (error) {
-      toast.error("Failed to load categories");
+      toast.error("Error al cargar categorías");
       return;
     }
 
@@ -86,7 +86,7 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
     e.preventDefault();
 
     if (!formData.category_id || !formData.behavior_title || !formData.behavior_description) {
-      toast.error("Please fill in all required fields");
+      toast.error("Por favor completa todos los campos requeridos");
       return;
     }
 
@@ -97,7 +97,7 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        toast.error("You must be logged in");
+        toast.error("Debes iniciar sesión");
         return;
       }
 
@@ -112,7 +112,7 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
 
       if (error) throw error;
 
-      toast.success("Behavior observation recorded");
+      toast.success("Observación de comportamiento registrada");
 
       setFormData({
         category_id: "",
@@ -127,7 +127,7 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
       onSave?.();
     } catch (error) {
       console.error("Error saving observation:", error);
-      toast.error("Failed to save observation");
+      toast.error("Error al guardar la observación");
     } finally {
       setIsLoading(false);
     }
@@ -138,18 +138,18 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Record Behavior Observation</CardTitle>
+        <CardTitle>Registrar Observación de Comportamiento</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="category">Category *</Label>
+            <Label htmlFor="category">Categoría *</Label>
             <Select
               value={formData.category_id}
               onValueChange={(value) => setFormData({ ...formData, category_id: value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
+                <SelectValue placeholder="Selecciona una categoría" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((category) => (
@@ -171,10 +171,10 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Behavior Title *</Label>
+            <Label htmlFor="title">Título del Comportamiento *</Label>
             <Input
               id="title"
-              placeholder="Brief title of the observed behavior"
+              placeholder="Título breve del comportamiento observado"
               value={formData.behavior_title}
               onChange={(e) => setFormData({ ...formData, behavior_title: e.target.value })}
               required
@@ -182,10 +182,10 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="description">Descripción *</Label>
             <Textarea
               id="description"
-              placeholder="Detailed description of what you observed..."
+              placeholder="Descripción detallada de lo observado..."
               value={formData.behavior_description}
               onChange={(e) => setFormData({ ...formData, behavior_description: e.target.value })}
               required
@@ -194,10 +194,10 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="context">Context</Label>
+            <Label htmlFor="context">Contexto</Label>
             <Textarea
               id="context"
-              placeholder="What was happening when this behavior occurred?"
+              placeholder="¿Qué estaba sucediendo cuando ocurrió este comportamiento?"
               value={formData.context}
               onChange={(e) => setFormData({ ...formData, context: e.target.value })}
               rows={2}
@@ -205,7 +205,7 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
           </div>
 
           <div className="space-y-2">
-            <Label>Intensity: {formData.intensity}/10</Label>
+            <Label>Intensidad: {formData.intensity}/10</Label>
             <Slider
               value={[formData.intensity]}
               onValueChange={([value]) => setFormData({ ...formData, intensity: value })}
@@ -215,20 +215,20 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
               className="w-full"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Low</span>
-              <span>Medium</span>
-              <span>High</span>
+              <span>Baja</span>
+              <span>Media</span>
+              <span>Alta</span>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="emotional-state">Emotional State</Label>
+            <Label htmlFor="emotional-state">Estado Emocional</Label>
             <Select
               value={formData.emotional_state}
               onValueChange={(value) => setFormData({ ...formData, emotional_state: value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select emotional state" />
+                <SelectValue placeholder="Selecciona el estado emocional" />
               </SelectTrigger>
               <SelectContent>
                 {EMOTIONAL_STATES.map((state) => (
@@ -241,11 +241,11 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="triggers">Triggers</Label>
+            <Label htmlFor="triggers">Desencadenantes</Label>
             <div className="flex gap-2">
               <Input
                 id="triggers"
-                placeholder="Add a trigger..."
+                placeholder="Agregar un desencadenante..."
                 value={triggerInput}
                 onChange={(e) => setTriggerInput(e.target.value)}
                 onKeyPress={(e) => {
@@ -278,7 +278,7 @@ export function BehaviorTracker({ clientId, sessionId, onSave }: BehaviorTracker
           </div>
 
           <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? "Saving..." : "Record Observation"}
+            {isLoading ? "Guardando..." : "Registrar Observación"}
           </Button>
         </form>
       </CardContent>

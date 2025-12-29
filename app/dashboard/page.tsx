@@ -64,7 +64,7 @@ export default function DashboardPage() {
 
       const { data: sessions } = await supabase
         .from('sessions')
-        .select('*, clients(name)')
+        .select('*, clients(full_name)')
         .eq('coach_id', user.id)
         .order('scheduled_date', { ascending: true })
 
@@ -108,20 +108,23 @@ export default function DashboardPage() {
         })
       }
 
-      const { data: payments } = await supabase
+      const { data: payments, error: paymentsError } = await supabase
         .from('payments')
         .select('*')
         .eq('coach_id', user.id)
 
-      const paymentsThisMonth = payments?.filter(p => {
+      // Si la tabla payments no existe o hay error, usar array vacío
+      const paymentsData = paymentsError ? [] : (payments || [])
+
+      const paymentsThisMonth = paymentsData.filter(p => {
         const date = parseISO(p.created_at)
         return isSameMonth(date, now)
-      }) || []
+      })
 
-      const paymentsPrevMonth = payments?.filter(p => {
+      const paymentsPrevMonth = paymentsData.filter(p => {
         const date = parseISO(p.created_at)
         return date >= prevMonthStart && date <= prevMonthEnd
-      }) || []
+      })
 
       const revenueThisMonth = paymentsThisMonth
         .filter(p => p.status === 'paid')
@@ -137,10 +140,10 @@ export default function DashboardPage() {
         const monthStart = startOfMonth(month)
         const monthEnd = endOfMonth(month)
 
-        const monthPayments = payments?.filter(p => {
+        const monthPayments = paymentsData.filter(p => {
           const date = parseISO(p.created_at)
           return date >= monthStart && date <= monthEnd && p.status === 'paid'
-        }) || []
+        })
 
         revenueChartData.push({
           month: format(month, 'MMM', { locale: es }),
@@ -154,8 +157,8 @@ export default function DashboardPage() {
         ? Math.round(totalSessions / activeClients.length * 10) / 10
         : 0
 
-      const totalRevenue = payments?.filter(p => p.status === 'paid')
-        .reduce((sum, p) => sum + Number(p.amount), 0) || 0
+      const totalRevenue = paymentsData.filter(p => p.status === 'paid')
+        .reduce((sum, p) => sum + Number(p.amount), 0)
       const avgRevenuePerSession = totalCompletedSessions > 0
         ? Math.round(totalRevenue / totalCompletedSessions)
         : 0
@@ -313,7 +316,7 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 transition-colors">
                         <div className="flex-1">
                           <h3 className="font-medium text-slate-900">{session.title}</h3>
-                          <p className="text-sm text-slate-600">{session.clients?.name}</p>
+                          <p className="text-sm text-slate-600">{session.clients?.full_name}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-slate-900">

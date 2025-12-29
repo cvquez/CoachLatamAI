@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { Heart, Zap, AlertTriangle } from "lucide-react";
 
 interface BehaviorObservation {
@@ -87,11 +88,11 @@ export function BehaviorTimeline({ clientId, sessionId, maxHeight = "600px" }: B
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Behavior Timeline</CardTitle>
+          <CardTitle>Línea de Tiempo de Comportamientos</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <div className="text-muted-foreground">Loading observations...</div>
+            <div className="text-muted-foreground">Cargando observaciones...</div>
           </div>
         </CardContent>
       </Card>
@@ -102,11 +103,11 @@ export function BehaviorTimeline({ clientId, sessionId, maxHeight = "600px" }: B
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Behavior Timeline</CardTitle>
+          <CardTitle>Línea de Tiempo de Comportamientos</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <div className="text-muted-foreground">No behavior observations recorded yet</div>
+            <div className="text-muted-foreground">No hay observaciones de comportamiento registradas aún</div>
           </div>
         </CardContent>
       </Card>
@@ -116,7 +117,7 @@ export function BehaviorTimeline({ clientId, sessionId, maxHeight = "600px" }: B
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Behavior Timeline</CardTitle>
+        <CardTitle>Línea de Tiempo de Comportamientos</CardTitle>
       </CardHeader>
       <CardContent>
         <ScrollArea style={{ height: maxHeight }}>
@@ -144,7 +145,7 @@ export function BehaviorTimeline({ clientId, sessionId, maxHeight = "600px" }: B
                       <div>
                         <h4 className="font-semibold">{observation.behavior_title}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(observation.observed_at), "MMM dd, yyyy 'at' HH:mm")}
+                          {format(new Date(observation.observed_at), "dd 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}
                         </p>
                       </div>
                       <div className={`flex items-center gap-1 ${getIntensityColor(observation.intensity)}`}>
@@ -168,7 +169,7 @@ export function BehaviorTimeline({ clientId, sessionId, maxHeight = "600px" }: B
 
                     {observation.context && (
                       <div className="bg-muted p-2 rounded text-sm mb-2">
-                        <span className="font-medium">Context:</span> {observation.context}
+                        <span className="font-medium">Contexto:</span> {observation.context}
                       </div>
                     )}
 

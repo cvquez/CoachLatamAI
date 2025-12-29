@@ -56,7 +56,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="min-h-screen bg-slate-50">
       <Navbar
         user={{
-          name: user.name,
+          name: user.full_name,
           email: user.email,
           profile_image: user.profile_image,
         }}
@@ -66,7 +66,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </main>
       <ChatWidget
         coachContext={{
-          name: user.name,
+          name: user.full_name,
           type: user.coaching_type?.[0] || 'Coaching',
           method: user.coaching_method?.[0] || 'General',
         }}

@@ -21,17 +21,16 @@ import { useToast } from '@/hooks/use-toast';
 
 interface Client {
   id: string;
-  name: string;
+  full_name: string;
 }
 
 interface SessionData {
   title: string;
-  description: string;
+  description: string;  // Se mapea a 'notes' en la base de datos
   scheduled_date: string;
   duration: number;
   status: string;
   session_type: string;
-  notes: string;
   client_id: string;
 }
 
@@ -64,7 +63,7 @@ export default function EditSessionPage() {
 
     const [sessionResult, clientsResult] = await Promise.all([
       supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle(),
-      supabase.from('clients').select('id, name').order('name'),
+      supabase.from('clients').select('id, full_name').order('full_name'),
     ]);
 
     if (sessionResult.error) {
@@ -94,14 +93,13 @@ export default function EditSessionPage() {
     const session = sessionResult.data;
     setFormData({
       title: session.title || '',
-      description: session.description || '',
+      description: session.notes || '',  // Mapear notes de la BD a description del form
       scheduled_date: session.scheduled_date
         ? new Date(session.scheduled_date).toISOString().slice(0, 16)
         : '',
       duration: session.duration || 60,
       status: session.status || 'scheduled',
-      session_type: session.session_type || 'online',
-      notes: session.notes || '',
+      session_type: session.session_type || 'individual',
       client_id: session.client_id || '',
     });
 
@@ -118,12 +116,11 @@ export default function EditSessionPage() {
       .from('sessions')
       .update({
         title: formData.title,
-        description: formData.description,
         scheduled_date: new Date(formData.scheduled_date).toISOString(),
         duration: formData.duration,
         status: formData.status,
         session_type: formData.session_type,
-        notes: formData.notes,
+        notes: formData.description,  // Usar description del form pero guardarlo en notes
         client_id: formData.client_id,
         updated_at: new Date().toISOString(),
       })
@@ -197,7 +194,7 @@ export default function EditSessionPage() {
                   <SelectContent>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
-                        {client.name}
+                        {client.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -272,9 +269,10 @@ export default function EditSessionPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="online">En línea</SelectItem>
-                      <SelectItem value="in-person">Presencial</SelectItem>
-                      <SelectItem value="phone">Teléfono</SelectItem>
+                      <SelectItem value="individual">Individual</SelectItem>
+                      <SelectItem value="group">Grupal</SelectItem>
+                      <SelectItem value="workshop">Taller</SelectItem>
+                      <SelectItem value="assessment">Evaluación</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

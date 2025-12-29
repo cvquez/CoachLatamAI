@@ -27,39 +27,38 @@ interface SearchFiltersProps {
   onReset: () => void;
 }
 
-// Mapeo de valores en inglés (base de datos) a claves de traducción
-const SPECIALIZATIONS_MAP: Record<string, { en: string; es: string }> = {
-  "Executive Coaching": { en: "Executive Coaching", es: "Coaching Ejecutivo" },
-  "Life Coaching": { en: "Life Coaching", es: "Coaching de Vida" },
-  "Career Coaching": { en: "Career Coaching", es: "Coaching de Carrera" },
-  "Health & Wellness": { en: "Health & Wellness", es: "Salud y Bienestar" },
-  "Business Coaching": { en: "Business Coaching", es: "Coaching de Negocios" },
-  "Leadership Development": { en: "Leadership Development", es: "Desarrollo de Liderazgo" },
-  "Mindfulness": { en: "Mindfulness", es: "Mindfulness" },
-  "Relationship Coaching": { en: "Relationship Coaching", es: "Coaching de Relaciones" },
-  "Financial Coaching": { en: "Financial Coaching", es: "Coaching Financiero" },
-  "Performance Coaching": { en: "Performance Coaching", es: "Coaching de Desempeño" },
+const SPECIALIZATIONS_MAP: Record<string, string> = {
+  "Executive Coaching": "spec.executive",
+  "Life Coaching": "spec.life",
+  "Career Coaching": "spec.career",
+  "Health & Wellness": "spec.health",
+  "Business Coaching": "spec.business",
+  "Leadership Development": "spec.leadership",
+  "Mindfulness": "spec.mindfulness",
+  "Relationship Coaching": "spec.relationship",
+  "Financial Coaching": "spec.financial",
+  "Performance Coaching": "spec.performance",
 };
 
-const LANGUAGES_MAP: Record<string, { en: string; es: string }> = {
-  "English": { en: "English", es: "Inglés" },
-  "Spanish": { en: "Spanish", es: "Español" },
-  "French": { en: "French", es: "Francés" },
-  "German": { en: "German", es: "Alemán" },
-  "Portuguese": { en: "Portuguese", es: "Portugués" },
-  "Italian": { en: "Italian", es: "Italiano" },
-  "Mandarin": { en: "Mandarin", es: "Mandarín" },
+const LANGUAGES_MAP: Record<string, string> = {
+  "English": "lang.english",
+  "Spanish": "lang.spanish",
+  "French": "lang.french",
+  "German": "lang.german",
+  "Portuguese": "lang.portuguese",
+  "Italian": "lang.italian",
+  "Mandarin": "lang.mandarin",
 };
 
 export function SearchFilters({ filters, onFilterChange, onReset }: SearchFiltersProps) {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
 
   const SPECIALIZATIONS = Object.keys(SPECIALIZATIONS_MAP);
   const LANGUAGES = Object.keys(LANGUAGES_MAP);
 
   const AVAILABILITY_OPTIONS = [
-    { value: "available", label: language === 'es' ? 'Disponible Ahora' : 'Available Now' },
-    { value: "busy", label: language === 'es' ? 'Disponibilidad Limitada' : 'Limited Availability' },
+    { value: "available", label: t('filters.available_now') },
+    { value: "busy", label: t('filters.limited_availability') },
   ];
 
   const updateFilter = (key: keyof FilterOptions, value: any) => {
@@ -83,24 +82,15 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
     (filters.maxPrice < 500 ? 1 : 0) +
     (filters.yearsExperience > 0 ? 1 : 0);
 
-  // Función para obtener la etiqueta traducida
-  const getSpecLabel = (spec: string): string => {
-    return SPECIALIZATIONS_MAP[spec]?.[language] || spec;
-  };
-
-  const getLangLabel = (lang: string): string => {
-    return LANGUAGES_MAP[lang]?.[language] || lang;
-  };
-
   return (
-    <Card className="sticky top-4 border border-slate-200 shadow-soft">
+    <Card className="sticky top-4">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{language === 'es' ? 'Filtros' : 'Filters'}</CardTitle>
+          <CardTitle className="text-lg">{t('filters.title')}</CardTitle>
           {activeFiltersCount > 0 && (
             <Button variant="ghost" size="sm" onClick={onReset} className="h-8 px-2">
               <X className="h-4 w-4 mr-1" />
-              {language === 'es' ? 'Limpiar' : 'Clear'} ({activeFiltersCount})
+              {t('filters.clear')} ({activeFiltersCount})
             </Button>
           )}
         </div>
@@ -109,12 +99,12 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
       <CardContent className="space-y-6">
         {/* Search */}
         <div className="space-y-2">
-          <Label htmlFor="search">{language === 'es' ? 'Buscar' : 'Search'}</Label>
+          <Label htmlFor="search">{t('filters.search')}</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               id="search"
-              placeholder={language === 'es' ? 'Buscar coaches...' : 'Search coaches...'}
+              placeholder={t('filters.search_placeholder')}
               value={filters.searchQuery}
               onChange={(e) => updateFilter("searchQuery", e.target.value)}
               className="pl-9"
@@ -124,7 +114,7 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
 
         {/* Specializations */}
         <div className="space-y-3">
-          <Label>{language === 'es' ? 'Especializaciones' : 'Specializations'}</Label>
+          <Label>{t('filters.specializations')}</Label>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {SPECIALIZATIONS.map((spec: string) => (
               <div key={spec} className="flex items-center space-x-2">
@@ -137,7 +127,7 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
                   htmlFor={`spec-${spec}`}
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
-                  {getSpecLabel(spec)}
+                  {t(SPECIALIZATIONS_MAP[spec])}
                 </label>
               </div>
             ))}
@@ -146,7 +136,7 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
 
         {/* Minimum Rating */}
         <div className="space-y-3">
-          <Label>{language === 'es' ? 'Calificación Mínima' : 'Minimum Rating'}</Label>
+          <Label>{t('filters.minimum_rating')}</Label>
           <div className="space-y-2">
             <Slider
               value={[filters.minRating]}
@@ -157,20 +147,18 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
               className="w-full"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{language === 'es' ? 'Cualquiera' : 'Any'}</span>
+              <span>{t('filters.any')}</span>
               <span className="font-semibold text-foreground">
-                {filters.minRating > 0 
-                  ? `${filters.minRating}+ ${language === 'es' ? 'estrellas' : 'stars'}` 
-                  : (language === 'es' ? 'Cualquier calificación' : 'Any rating')}
+                {filters.minRating > 0 ? `${filters.minRating}+ ${t('filters.stars')}` : t('filters.any_rating')}
               </span>
-              <span>5 {language === 'es' ? 'estrellas' : 'stars'}</span>
+              <span>5 {t('filters.stars')}</span>
             </div>
           </div>
         </div>
 
         {/* Maximum Price */}
         <div className="space-y-3">
-          <Label>{language === 'es' ? 'Precio Máximo por Sesión' : 'Maximum Price per Session'}</Label>
+          <Label>{t('filters.maximum_price')}</Label>
           <div className="space-y-2">
             <Slider
               value={[filters.maxPrice]}
@@ -183,9 +171,7 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>$0</span>
               <span className="font-semibold text-foreground">
-                {filters.maxPrice < 500 
-                  ? `${language === 'es' ? 'Hasta' : 'Up to'} $${filters.maxPrice}` 
-                  : (language === 'es' ? 'Cualquier precio' : 'Any price')}
+                {filters.maxPrice < 500 ? `${t('filters.up_to')} $${filters.maxPrice}` : t('filters.any_price')}
               </span>
               <span>$500+</span>
             </div>
@@ -194,7 +180,7 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
 
         {/* Years of Experience */}
         <div className="space-y-3">
-          <Label>{language === 'es' ? 'Años de Experiencia' : 'Years of Experience'}</Label>
+          <Label>{t('filters.years_experience')}</Label>
           <div className="space-y-2">
             <Slider
               value={[filters.yearsExperience]}
@@ -205,20 +191,18 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
               className="w-full"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{language === 'es' ? 'Cualquiera' : 'Any'}</span>
+              <span>{t('filters.any')}</span>
               <span className="font-semibold text-foreground">
-                {filters.yearsExperience > 0 
-                  ? `${filters.yearsExperience}+ ${language === 'es' ? 'años' : 'years'}` 
-                  : (language === 'es' ? 'Cualquier experiencia' : 'Any experience')}
+                {filters.yearsExperience > 0 ? `${filters.yearsExperience}+ ${t('filters.years')}` : t('filters.any_experience')}
               </span>
-              <span>20+ {language === 'es' ? 'años' : 'years'}</span>
+              <span>20+ {t('filters.years')}</span>
             </div>
           </div>
         </div>
 
         {/* Languages */}
         <div className="space-y-3">
-          <Label>{language === 'es' ? 'Idiomas' : 'Languages'}</Label>
+          <Label>{t('filters.languages')}</Label>
           <div className="flex flex-wrap gap-2">
             {LANGUAGES.map((lang: string) => (
               <Badge
@@ -227,7 +211,7 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
                 className="cursor-pointer"
                 onClick={() => toggleArrayFilter("languages", lang)}
               >
-                {getLangLabel(lang)}
+                {t(LANGUAGES_MAP[lang])}
               </Badge>
             ))}
           </div>
@@ -235,7 +219,7 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
 
         {/* Availability */}
         <div className="space-y-3">
-          <Label>{language === 'es' ? 'Disponibilidad' : 'Availability'}</Label>
+          <Label>{t('filters.availability')}</Label>
           <div className="space-y-2">
             {AVAILABILITY_OPTIONS.map((option) => (
               <div key={option.value} className="flex items-center space-x-2">
@@ -267,7 +251,7 @@ export function SearchFilters({ filters, onFilterChange, onReset }: SearchFilter
               htmlFor="verified"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
             >
-              {language === 'es' ? 'Solo Coaches Verificados' : 'Verified Coaches Only'}
+              {t('filters.verified_only')}
             </label>
           </div>
         </div>

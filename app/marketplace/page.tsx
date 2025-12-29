@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { Star, TrendingUp, DollarSign, Users, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface Coach {
   id: string;
@@ -61,6 +62,8 @@ export default function MarketplacePage() {
     yearsExperience: 0,
     verifiedOnly: false,
   });
+
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadCoaches();
@@ -195,11 +198,10 @@ export default function MarketplacePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Find Your Perfect Coach
+              {t('marketplace.title')}
             </h1>
             <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-              Connect with world-class coaches who will help you achieve your goals
-              and unlock your full potential
+              {t('marketplace.subtitle')}
             </p>
 
             <div className="flex flex-wrap justify-center gap-8 mt-12">
@@ -208,7 +210,7 @@ export default function MarketplacePage() {
                   <Users className="h-6 w-6" />
                   <span className="text-3xl font-bold">{stats.total}</span>
                 </div>
-                <p className="text-sm text-blue-100">Expert Coaches</p>
+                <p className="text-sm text-blue-100">{t('marketplace.expert_coaches')}</p>
               </div>
 
               <div className="text-center">
@@ -216,7 +218,7 @@ export default function MarketplacePage() {
                   <Sparkles className="h-6 w-6" />
                   <span className="text-3xl font-bold">{stats.available}</span>
                 </div>
-                <p className="text-sm text-blue-100">Available Now</p>
+                <p className="text-sm text-blue-100">{t('marketplace.available_now')}</p>
               </div>
 
               <div className="text-center">
@@ -224,7 +226,7 @@ export default function MarketplacePage() {
                   <Star className="h-6 w-6 fill-yellow-300 text-yellow-300" />
                   <span className="text-3xl font-bold">{stats.avgRating}</span>
                 </div>
-                <p className="text-sm text-blue-100">Average Rating</p>
+                <p className="text-sm text-blue-100">{t('marketplace.average_rating')}</p>
               </div>
 
               <div className="text-center">
@@ -232,19 +234,19 @@ export default function MarketplacePage() {
                   <DollarSign className="h-6 w-6" />
                   <span className="text-3xl font-bold">${stats.avgPrice}</span>
                 </div>
-                <p className="text-sm text-blue-100">Avg. per Session</p>
+                <p className="text-sm text-blue-100">{t('marketplace.avg_per_session')}</p>
               </div>
             </div>
 
             <div className="mt-8 flex gap-4 justify-center">
-              <Link href="/register?type=client">
+              <Link href="/register-client">
                 <Button size="lg" variant="secondary" className="gap-2">
-                  Get Started as Client
+                  {t('marketplace.get_started_client')}
                 </Button>
               </Link>
-              <Link href="/register?type=coach">
-                <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10">
-                  Become a Coach
+              <Link href="/register">
+                <Button size="lg" variant="secondary" className="gap-2">
+                  {t('marketplace.become_coach')}
                 </Button>
               </Link>
             </div>
@@ -256,10 +258,10 @@ export default function MarketplacePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold">
-              {filteredCoaches.length} Coaches Available
+              {filteredCoaches.length} {t('marketplace.coaches_available')}
             </h2>
             <p className="text-muted-foreground">
-              Browse and connect with expert coaches
+              {t('marketplace.browse_coaches')}
             </p>
           </div>
 
@@ -268,12 +270,12 @@ export default function MarketplacePage() {
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="featured">Featured First</SelectItem>
-              <SelectItem value="rating">Highest Rated</SelectItem>
-              <SelectItem value="reviews">Most Reviews</SelectItem>
-              <SelectItem value="price-low">Price: Low to High</SelectItem>
-              <SelectItem value="price-high">Price: High to Low</SelectItem>
-              <SelectItem value="experience">Most Experience</SelectItem>
+              <SelectItem value="featured">{t('sort.featured_first')}</SelectItem>
+              <SelectItem value="rating">{t('sort.highest_rated')}</SelectItem>
+              <SelectItem value="reviews">{t('sort.most_reviews')}</SelectItem>
+              <SelectItem value="price-low">{t('sort.price_low_high')}</SelectItem>
+              <SelectItem value="price-high">{t('sort.price_high_low')}</SelectItem>
+              <SelectItem value="experience">{t('sort.most_experience')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -290,7 +292,7 @@ export default function MarketplacePage() {
           <div className="lg:col-span-3">
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[...Array(6)].map((_, i) => (
+                {[...Array(6)].map((_, i: number) => (
                   <div key={i} className="space-y-4">
                     <Skeleton className="h-48 w-full" />
                     <Skeleton className="h-4 w-3/4" />
@@ -301,17 +303,17 @@ export default function MarketplacePage() {
             ) : filteredCoaches.length === 0 ? (
               <div className="text-center py-12">
                 <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No coaches found</h3>
+                <h3 className="text-xl font-semibold mb-2">{t('marketplace.no_coaches')}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Try adjusting your filters to see more results
+                  {t('marketplace.adjust_filters')}
                 </p>
                 <Button onClick={resetFilters} variant="outline">
-                  Reset Filters
+                  {t('marketplace.reset_filters')}
                 </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredCoaches.map((coach) => (
+                {filteredCoaches.map((coach: Coach) => (
                   <CoachCard key={coach.id} coach={coach} />
                 ))}
               </div>
