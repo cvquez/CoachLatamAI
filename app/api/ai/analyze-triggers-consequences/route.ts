@@ -98,9 +98,25 @@ export async function POST(request: NextRequest) {
       });
     }
 
+
     // Análisis básico de triggers y consecuencias
-	const triggers: string[] = [];
-	const consequences: string[] = [];
+type Trigger = {
+  id: string;
+  name: string;
+  frequency: number;
+  severity: 'low' | 'medium' | 'high';
+  relatedSessions: unknown[]; // o string[] si guardás IDs
+};
+
+type Consequence = {
+  id: string;
+  name: string;
+  impact: 'low' | 'medium' | 'high';
+  relatedSessions: unknown[]; // o string[] si guardás IDs
+};
+
+const triggers: Trigger[] = [];
+const consequences: Consequence[] = [];
     const insights = [
       {
         type: 'info',
