@@ -31,6 +31,7 @@ interface SessionData {
   duration: number;
   status: string;
   session_type: string;
+    notes?: string;
   client_id: string;
 }
 
@@ -50,7 +51,7 @@ export default function EditSessionPage() {
     duration: 60,
     status: 'scheduled',
     session_type: 'online',
-    notes?: string;
+    notes: '',
     client_id: '',
   });
 
