@@ -22,6 +22,9 @@ export default function NewEvaluationPage() {
   const params = useParams()
   const { toast } = useToast()
   const supabase = createClient()
+const rawId = params?.id
+const clientId = Array.isArray(rawId) ? rawId[0] : rawId
+
 
   useEffect(() => {
     loadData()
@@ -42,10 +45,9 @@ export default function NewEvaluationPage() {
       }
 
       const { data: clientData, error: clientError } = await supabase
-        .from('users')
+        .from('clients')
         .select('*')
-        .eq('id', params.id)
-        .eq('role', 'client')
+        .eq('id', params.id)        
         .maybeSingle()
 
       if (clientError) throw clientError
@@ -101,7 +103,7 @@ export default function NewEvaluationPage() {
   }
 
   function handleComplete() {
-    router.push(`/clients/${params.id}/evaluations`)
+    	router.push(`/clients/${clientId}/evaluations`)
   }
 
   if (loading) {
@@ -119,7 +121,7 @@ export default function NewEvaluationPage() {
       <Button
         variant="ghost"
         className="mb-6"
-        onClick={() => router.push(`/clients/${params.id}/evaluations`)}
+        onClick={() => router.push(`/clients/${clientId}/evaluations`)}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Volver a Evaluaciones

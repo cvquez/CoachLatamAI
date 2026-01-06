@@ -1,238 +1,152 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
+    
+    // Verificar autenticación
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    console.log('🔍 DEBUG TRIGGERS - User authenticated:', user?.id, user?.email);
+    
+    if (authError || !user) {
+      console.error('❌ DEBUG TRIGGERS - Auth error:', authError);
       return NextResponse.json(
-        { error: "OpenAI API key not configured" },
-        { status: 500 }
+        { error: 'No autorizado' },
+        { status: 401 }
       );
     }
 
-    const { clientId, behaviorObservations } = await request.json();
+    const body = await request.json();
+    const { clientId } = body;
+
+    console.log('🔍 DEBUG TRIGGERS - ClientId requested:', clientId);
 
     if (!clientId) {
-      return NextResponse.json({ error: "Client ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: 'clientId es requerido' },
+        { status: 400 }
+      );
     }
 
-    let observations = behaviorObservations;
+    // ✅ VERIFICAR SI EL USUARIO ES COACH O CLIENTE
+    let hasAccess = false;
+    let isCoach = false;
 
-    if (!observations) {
-      const { data, error } = await supabase
-        .from("behavior_observations")
-        .select(`
-          *,
-          behavior_categories (
-            name,
-            description,
-            color
-          )
-        `)
-        .eq("client_id", clientId)
-        .order("observed_at", { ascending: false })
-        .limit(30);
+    // Verificar si es el propio cliente
+    const { data: clientRecord, error: clientError } = await supabase
+      .from('clients')
+      .select('user_id')
+      .eq('id', clientId)
+      .single();
 
-      if (error || !data || data.length === 0) {
-        return NextResponse.json(
-          { error: "No behavior observations found for analysis" },
-          { status: 404 }
-        );
+    console.log('🔍 DEBUG TRIGGERS - Client record:', clientRecord);
+    console.log('🔍 DEBUG TRIGGERS - Client error:', clientError);
+
+    if (clientRecord && clientRecord.user_id === user.id) {
+      hasAccess = true;
+      isCoach = false;
+      console.log('✅ DEBUG TRIGGERS - Access granted: User is the client');
+    }
+
+    // Si no es el cliente, verificar si es su coach
+    if (!hasAccess) {
+      const { data: relationship, error: relError } = await supabase
+        .from('coach_client_relationships')
+        .select('id')
+        .eq('coach_id', user.id)
+        .eq('client_id', clientId)
+        .eq('status', 'active')
+        .single();
+
+      console.log('🔍 DEBUG TRIGGERS - Relationship found:', relationship);
+      console.log('🔍 DEBUG TRIGGERS - Relationship error:', relError);
+
+      if (relationship) {
+        hasAccess = true;
+        isCoach = true;
+        console.log('✅ DEBUG TRIGGERS - Access granted: User is the coach');
       }
-
-      observations = data;
     }
 
-    const prompt = `You are an expert behavioral psychologist and coaching analyst specializing in identifying triggers, consequences, and behavior chains.
+    if (!hasAccess) {
+      console.error('❌ DEBUG TRIGGERS - Access denied. User:', user.id, 'ClientId:', clientId);
+      return NextResponse.json(
+        { error: 'No tienes acceso a este cliente' },
+        { status: 403 }
+      );
+    }
 
-Analyze the following behavior observations and identify:
+    // Obtener sesiones del cliente con notas
+    const { data: sessions } = await supabase
+      .from('coaching_sessions')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('status', 'completed')
+      .order('scheduled_date', { ascending: false })
+      .limit(10);
 
-1. PRIMARY TRIGGERS: What events, situations, thoughts, or feelings consistently precede each behavior?
-2. CONSEQUENCES: What are the immediate and long-term results of each behavior?
-3. TRIGGER-BEHAVIOR-CONSEQUENCE CHAINS: Map out the complete chain for each pattern
-4. INTERVENTION POINTS: Where can the client interrupt negative patterns?
-5. REINFORCEMENT PATTERNS: What consequences are reinforcing unwanted behaviors?
+    console.log('🔍 DEBUG TRIGGERS - Sessions found:', sessions?.length || 0);
 
-BEHAVIOR OBSERVATIONS:
-${observations.map((obs: any, i: number) => `
-Observation ${i + 1}:
-  Category: ${obs.behavior_categories?.name || 'Unknown'}
-  Behavior: ${obs.behavior_title}
-  Description: ${obs.behavior_description}
-  Context: ${obs.context || 'Not specified'}
-  Intensity: ${obs.intensity}/10
-  Emotional State: ${obs.emotional_state || 'Not specified'}
-  Identified Triggers: ${obs.triggers?.join(", ") || 'None identified'}
-  Date: ${new Date(obs.observed_at).toLocaleDateString()}
-`).join("\n")}
+    if (!sessions || sessions.length === 0) {
+      return NextResponse.json({
+        triggers: [],
+        consequences: [],
+        insights: [],
+        message: 'No hay suficientes sesiones completadas para analizar'
+      });
+    }
 
-Return your analysis as a JSON object with this EXACT structure:
-{
-  "triggerAnalysis": {
-    "commonTriggers": [
+    // Análisis básico de triggers y consecuencias
+    const triggers = [];
+    const consequences = [];
+    const insights = [
       {
-        "trigger": "string - the specific trigger",
-        "frequency": "string - how often it occurs",
-        "associatedBehaviors": ["behavior1", "behavior2"],
-        "emotionalImpact": "string - emotional response",
-        "interventionStrategy": "string - how to address this trigger"
+        type: 'info',
+        title: 'Análisis en desarrollo',
+        description: 'El análisis de triggers y consecuencias está en desarrollo. Por ahora mostramos datos básicos de tus sesiones.'
       }
-    ],
-    "triggerCategories": {
-      "environmental": ["trigger1", "trigger2"],
-      "emotional": ["trigger1", "trigger2"],
-      "interpersonal": ["trigger1", "trigger2"],
-      "cognitive": ["trigger1", "trigger2"]
-    }
-  },
-  "consequenceAnalysis": {
-    "behaviorConsequences": [
-      {
-        "behavior": "string - behavior name",
-        "immediateConsequences": ["consequence1", "consequence2"],
-        "longTermConsequences": ["consequence1", "consequence2"],
-        "reinforcementType": "positive|negative|punishment|removal",
-        "isHelpful": true|false,
-        "alternativeBehavior": "string - suggested alternative"
-      }
-    ]
-  },
-  "behaviorChains": [
-    {
-      "chainTitle": "string - descriptive title",
-      "trigger": "string - what starts the chain",
-      "thought": "string - cognitive element",
-      "emotion": "string - emotional response",
-      "behavior": "string - the action taken",
-      "shortTermConsequence": "string - immediate result",
-      "longTermConsequence": "string - lasting impact",
-      "reinforcementFactor": "string - what maintains this chain",
-      "breakPoint": "string - optimal intervention point",
-      "alternativeChain": "string - healthier alternative sequence"
-    }
-  ],
-  "recommendations": [
-    {
-      "priority": "high|medium|low",
-      "category": "trigger_management|behavior_modification|consequence_restructuring",
-      "recommendation": "string - specific actionable recommendation",
-      "rationale": "string - why this is important",
-      "implementationSteps": ["step1", "step2", "step3"]
-    }
-  ],
-  "summary": {
-    "keyInsight": "string - most important finding",
-    "primaryPattern": "string - dominant pattern identified",
-    "mainChallenge": "string - biggest obstacle",
-    "bestOpportunity": "string - easiest win for the client"
-  }
-}`;
+    ];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert behavioral psychologist specializing in functional behavior analysis, trigger identification, and consequence mapping. Always respond with valid JSON.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-      max_tokens: 3000,
-    });
-
-    const analysisText = completion.choices[0].message.content;
-    if (!analysisText) {
-      throw new Error("No response from AI");
-    }
-
-    const analysis = JSON.parse(analysisText);
-
-    const insightsToCreate = [];
-
-    for (const trigger of analysis.triggerAnalysis.commonTriggers) {
-      insightsToCreate.push({
-        coach_id: user.id,
-        client_id: clientId,
-        pattern_id: null,
-        insight_type: "challenge" as const,
-        title: `Trigger: ${trigger.trigger}`,
-        description: `Frequency: ${trigger.frequency}. Emotional Impact: ${trigger.emotionalImpact}. Associated with: ${trigger.associatedBehaviors.join(", ")}`,
-        recommendations: [trigger.interventionStrategy],
-        priority: "high" as const,
-        ai_generated: true,
-        visibility: "coach_only" as const,
+    // Contar sesiones con notas
+    const sessionsWithCoachNotes = sessions.filter(s => s.coach_notes && s.coach_notes.trim() !== '');
+    const sessionsWithClientNotes = sessions.filter(s => s.client_notes && s.client_notes.trim() !== '');
+    
+    if (sessionsWithCoachNotes.length > 0 || sessionsWithClientNotes.length > 0) {
+      insights.push({
+        type: 'info',
+        title: `${sessionsWithCoachNotes.length + sessionsWithClientNotes.length} sesiones con notas`,
+        description: 'Se encontraron sesiones con notas que pueden ser analizadas para identificar patrones de comportamiento.'
       });
     }
 
-    for (const chain of analysis.behaviorChains.slice(0, 3)) {
-      insightsToCreate.push({
-        coach_id: user.id,
-        client_id: clientId,
-        pattern_id: null,
-        insight_type: "opportunity" as const,
-        title: `Behavior Chain: ${chain.chainTitle}`,
-        description: `Trigger → ${chain.trigger} | Thought → ${chain.thought} | Emotion → ${chain.emotion} | Behavior → ${chain.behavior} | Consequence → ${chain.shortTermConsequence}. Break point: ${chain.breakPoint}`,
-        recommendations: [chain.alternativeChain],
-        priority: "high" as const,
-        ai_generated: true,
-        visibility: "coach_only" as const,
+    // Ejemplo de triggers básicos (esto debería ser más sofisticado con IA)
+    if (sessions.length >= 3) {
+      triggers.push({
+        id: 'trigger_1',
+        name: 'Patrones de estrés',
+        frequency: Math.min(sessions.length, 5),
+        severity: 'medium',
+        relatedSessions: sessions.slice(0, 3).map(s => s.id)
       });
     }
 
-    for (const rec of analysis.recommendations.filter((r: any) => r.priority === "high")) {
-      insightsToCreate.push({
-        coach_id: user.id,
-        client_id: clientId,
-        pattern_id: null,
-        insight_type: "opportunity" as const,
-        title: rec.recommendation,
-        description: `${rec.rationale}. Steps: ${rec.implementationSteps.join(" → ")}`,
-        recommendations: rec.implementationSteps,
-        priority: rec.priority as "high" | "medium" | "low",
-        ai_generated: true,
-        visibility: "coach_only" as const,
-      });
-    }
-
-    if (insightsToCreate.length > 0) {
-      const { error: insightError } = await supabase
-        .from("behavior_insights")
-        .insert(insightsToCreate);
-
-      if (insightError) {
-        console.error("Error saving insights:", insightError);
-      }
-    }
+    console.log('✅ DEBUG TRIGGERS - Analysis completed successfully');
 
     return NextResponse.json({
-      success: true,
-      analysis,
-      insightsCreated: insightsToCreate.length,
+      triggers,
+      consequences,
+      insights,
+      sessionsAnalyzed: sessions.length,
+      lastAnalyzed: new Date().toISOString(),
+      userRole: isCoach ? 'coach' : 'client'
     });
-  } catch (error: any) {
-    console.error("Error analyzing triggers and consequences:", error);
+
+  } catch (error) {
+    console.error('❌ DEBUG TRIGGERS - Error analyzing triggers:', error);
     return NextResponse.json(
-      {
-        error: "Failed to analyze triggers and consequences",
-        details: error.message
-      },
+      { error: 'Error al analizar triggers y consecuencias' },
       { status: 500 }
     );
   }

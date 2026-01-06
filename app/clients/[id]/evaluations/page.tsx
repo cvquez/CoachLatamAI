@@ -44,11 +44,11 @@ export default function ClientEvaluationsPage() {
         return
       }
 
+      // ✅ CORREGIDO: Buscar en tabla 'clients' en lugar de 'users'
       const { data: clientData, error: clientError } = await supabase
-        .from('users')
+        .from('clients')
         .select('*')
         .eq('id', params.id)
-        .eq('role', 'client')
         .maybeSingle()
 
       if (clientError) throw clientError
@@ -56,6 +56,17 @@ export default function ClientEvaluationsPage() {
         toast({
           title: 'Error',
           description: 'Cliente no encontrado',
+          variant: 'destructive'
+        })
+        router.push('/clients')
+        return
+      }
+
+      // ✅ Verificar que el coach tiene acceso a este cliente
+      if (clientData.coach_id !== user.id) {
+        toast({
+          title: 'Error',
+          description: 'No tienes acceso a este cliente',
           variant: 'destructive'
         })
         router.push('/clients')

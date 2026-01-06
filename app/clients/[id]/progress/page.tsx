@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layouts/dashboard-layout';
 import { createClient } from '@/lib/supabase/client';
@@ -13,10 +13,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AchievementCard } from '@/components/progress/AchievementCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trophy } from 'lucide-react';
+import { Plus, Trophy, ArrowLeft } from 'lucide-react';
 
 export default function ClientProgressPage() {
   const params = useParams();
+  const router = useRouter();
   const clientId = params.id as string;
   const { toast } = useToast();
   const [client, setClient] = useState<any>(null);
@@ -88,6 +89,18 @@ export default function ClientProgressPage() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/clients/${clientId}`)}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver
+          </Button>
+        </div>
+
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Progreso y Logros</h1>
