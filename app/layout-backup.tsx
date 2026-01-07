@@ -9,11 +9,6 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'CoachLatam - Plataforma de Coaching',
   description: 'Plataforma integral de gestión de coaching profesional',
-
-  icons: {
-    icon: '/app/favicon.png',
-  },
-
   openGraph: {
     images: [
       {
@@ -21,7 +16,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-
   twitter: {
     card: 'summary_large_image',
     images: [
@@ -31,7 +25,6 @@ export const metadata: Metadata = {
     ],
   },
 };
-
 
 export default function RootLayout({
   children,

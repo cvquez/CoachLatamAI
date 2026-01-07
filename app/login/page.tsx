@@ -110,10 +110,10 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col items-start">
               <span className="text-3xl font-bold bg-gradient-to-r from-brand-blue-600 to-brand-cyan-600 bg-clip-text text-transparent">
-                CoachLatamAI
+                CoachLatam
               </span>
               <span className="text-[10px] text-brand-blue-500/70 font-medium tracking-widest uppercase">
-                AI-Powered Coaching
+                Athernus Powered Coaching
               </span>
             </div>
           </Link>

@@ -19,10 +19,10 @@ export default function Home() {
               </div>
               <div className="flex flex-col">
                 <span className="text-xl font-bold bg-gradient-to-r from-brand-blue-600 to-brand-cyan-600 bg-clip-text text-transparent">
-                  CoachLatamAI
+                  CoachLatam
                 </span>
                 <span className="text-[9px] text-brand-blue-500/70 font-medium tracking-widest uppercase">
-                  AI-Powered Coaching
+                  Athernus Powered Coaching
                 </span>
               </div>
             </Link>
@@ -181,14 +181,14 @@ export default function Home() {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-bold bg-gradient-to-r from-brand-blue-600 to-brand-cyan-600 bg-clip-text text-transparent">
-                  CoachLatamAI
+                  CoachLatam
                 </span>
                 <span className="text-[9px] text-brand-blue-500/70 font-medium tracking-widest uppercase">
-                  AI-Powered Coaching
+                  Athernus Powered Coaching
                 </span>
               </div>
             </div>
-            <p className="text-sm text-slate-600">&copy; 2024 CoachLatamAI. Todos los derechos reservados.</p>
+            <p className="text-sm text-slate-600">&copy; 2024 CoachLatam. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

@@ -51,7 +51,7 @@ export function useLanguage() {
 const translations: Record<Language, Record<string, string>> = {
   es: {
     // Marca
-    'brand.name': 'CoachLatamAI',
+    'brand.name': 'CoachLatam',
     'brand.tagline': 'Coaching Potenciado por IA',
     
     // Marketplace

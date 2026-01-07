@@ -111,7 +111,7 @@ export default function ClientDashboardLayout({ children }: ClientLayoutProps) {
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                  CoachLatamAI
+                  CoachLatam
                 </span>
                 <span className="text-[8px] text-blue-500/70 font-medium tracking-widest uppercase hidden sm:block">
                   CLIENT DASHBOARD
