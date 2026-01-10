@@ -1,10 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
+
+// Crear cliente con Service Role para operaciones de servidor
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  )
+}
+
+// Crear cliente con las cookies del usuario
+async function getSupabaseClient() {
+  const { createServerClient } = await import('@supabase/ssr')
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Ignorar errores en Route Handlers
+          }
+        },
+      },
+    }
+  )
+}
 
 // PayPal API helpers
 async function getPayPalAccessToken() {
   const auth = Buffer.from(
-    `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
+    `${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
   ).toString('base64')
 
   const response = await fetch(
@@ -45,20 +87,33 @@ async function cancelPayPalSubscription(subscriptionId: string, reason: string) 
     throw new Error(`PayPal API error: ${error}`)
   }
 
-  return response.status === 204 // 204 = Success
+  return response.status === 204
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    console.log('🔵 Cancel subscription request received')
+    
+    // Obtener cliente con autenticación del usuario
+    const supabase = await getSupabaseClient()
     
     // Verificar autenticación
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error('❌ Auth error:', authError)
+      return NextResponse.json({ error: 'Authentication error' }, { status: 401 })
+    }
+    
     if (!user) {
+      console.error('❌ No user found in session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { reason } = await request.json()
+    console.log('✅ User authenticated:', user.id)
+
+    const body = await request.json()
+    const { reason } = body
 
     // Obtener suscripción activa del usuario
     const { data: subscription, error: subError } = await supabase
@@ -68,22 +123,37 @@ export async function POST(request: NextRequest) {
       .eq('status', 'active')
       .single()
 
-    if (subError || !subscription) {
+    if (subError) {
+      console.error('❌ Error fetching subscription:', subError)
+      return NextResponse.json(
+        { error: 'Error fetching subscription' },
+        { status: 500 }
+      )
+    }
+
+    if (!subscription) {
+      console.log('❌ No active subscription found for user:', user.id)
       return NextResponse.json(
         { error: 'No active subscription found' },
         { status: 404 }
       )
     }
 
+    console.log('📋 Found subscription:', subscription.paypal_subscription_id)
+
     // Cancelar en PayPal
-    console.log('🔄 Cancelling subscription:', subscription.paypal_subscription_id)
+    console.log('🔄 Cancelling subscription in PayPal...')
     await cancelPayPalSubscription(
       subscription.paypal_subscription_id,
       reason || 'User requested cancellation'
     )
 
-    // Actualizar en base de datos
-    const { error: updateError } = await supabase
+    console.log('✅ PayPal cancellation successful')
+
+    // Usar Service Role para actualizar (bypass RLS)
+    const supabaseAdmin = getSupabaseAdmin()
+    
+    const { error: updateError } = await supabaseAdmin
       .from('subscriptions')
       .update({
         status: 'cancelled',
@@ -92,17 +162,11 @@ export async function POST(request: NextRequest) {
       .eq('id', subscription.id)
 
     if (updateError) {
-      console.error('Error updating subscription:', updateError)
+      console.error('❌ Error updating subscription:', updateError)
       throw updateError
     }
 
-    // Actualizar estado del usuario
-    await supabase
-      .from('users')
-      .update({ subscription_status: 'cancelled' })
-      .eq('id', user.id)
-
-    console.log('✅ Subscription cancelled successfully')
+    console.log('✅ Database updated successfully')
 
     return NextResponse.json({
       success: true,

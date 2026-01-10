@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 // Especialidades que coinciden con el marketplace
 const SPECIALIZATIONS = [
+  'Athernus', // ← NUEVO
   'Coaching Ejecutivo',
   'Coaching de Vida',
   'Coaching de Carrera',

@@ -154,6 +154,7 @@ export const PLAN_LIMITS = {
 } as const
 
 export const COACHING_TYPES: { value: CoachingType; label: string }[] = [
+  { value: 'athernus', label: 'Athernus' },
   { value: 'personal', label: 'Coaching Personal' },
   { value: 'organizacional_ejecutivo', label: 'Coaching Organizacional Ejecutivo' },
   { value: 'organizacional_equipos', label: 'Coaching Organizacional de Equipos' },

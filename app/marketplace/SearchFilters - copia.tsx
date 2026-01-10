@@ -38,7 +38,6 @@ const SPECIALIZATIONS_MAP: Record<string, string> = {
   "Relationship Coaching": "spec.relationship",
   "Financial Coaching": "spec.financial",
   "Performance Coaching": "spec.performance",
-  "Athernus": "spec.athernus", // ← NUEVO
 };
 
 const LANGUAGES_MAP: Record<string, string> = {
