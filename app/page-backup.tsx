@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Sparkles, Users, Calendar, Target, TrendingUp, CheckCircle, Search, Star, Zap, Brain } from 'lucide-react'
@@ -44,19 +43,6 @@ export default function Home() {
           </div>
         </div>
       </nav>
-
-      {/* Banner Hero con imagen de Athernus */}
-      <section className="relative w-full overflow-hidden">
-        <div className="relative w-full h-[400px] md:h-[500px]">
-          <Image
-            src="/athernus-banner.png"
-            alt="Athernus Powered Coaching - Unlocking Potential in Latin America"
-            fill
-            priority
-            className="object-cover"
-          />
-        </div>
-      </section>
 
       {/* Hero Section profesional */}
       <section className="container mx-auto px-4 py-20">

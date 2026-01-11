@@ -233,7 +233,6 @@ export default function SessionDetailPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -242,142 +241,155 @@ export default function SessionDetailPage() {
             <div>
               <h1 className="text-3xl font-bold text-slate-900">{session.title}</h1>
               <p className="text-slate-600 mt-1">
-                {session.clients?.full_name} - Sesión N/A
+                {session.clients?.full_name} - Sesión {session.session_number || 'N/A'}
               </p>
             </div>
           </div>
-          <Badge className={getStatusColor(session.status)}>
-            {getStatusLabel(session.status)}
-          </Badge>
+          <div className="flex gap-2">
+            {session.status === 'scheduled' && (
+              <Button variant="outline" asChild>
+                <Link href={`/sessions/${session.id}/results`}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Completar Sesión
+                </Link>
+              </Button>
+            )}
+            {session.status === 'completed' && (
+              <Button variant="outline" asChild>
+                <Link href={`/sessions/${session.id}/results`}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Ver Resultados
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" asChild>
+              <Link href={`/sessions/${session.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Link>
+            </Button>
+          </div>
         </div>
 
-        {/* ⭐ BOTONES DE ACCIÓN CON LÓGICA CONDICIONAL */}
-        <div className="flex gap-3">
-          {/* Botón "Completar Sesión" - Solo si está programada o en progreso */}
-          {(session.status === 'scheduled' || session.status === 'in-progress') && (
-            <Button 
-              onClick={() => router.push(`/sessions/${sessionId}/complete`)}
-              className="bg-gradient-to-r from-brand-green-500 to-brand-green-600 hover:from-brand-green-600 hover:to-brand-green-700"
-            >
-              <CheckCircle className="mr-2 h-5 w-5" />
-              Completar Sesión
-            </Button>
-          )}
-
-          {/* Botón "Ver Resultados" - Solo si ya está completada */}
-          {session.status === 'completed' && (
-            <Button 
-              onClick={() => router.push(`/sessions/${sessionId}/results`)}
-              variant="outline"
-            >
-              <FileText className="mr-2 h-5 w-5" />
-              Ver Resultados
-            </Button>
-          )}
-
-          {/* Botón "Editar" - Siempre visible */}
-          <Button 
-            onClick={() => router.push(`/sessions/${sessionId}/edit`)}
-            variant="outline"
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
-        </div>
-
-        {/* Session Details Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalles de la Sesión</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Cliente */}
-              <div className="flex items-start gap-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback className="bg-brand-blue-100 text-brand-blue-600">
-                    {getInitials(session.clients?.full_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-slate-600" />
-                    <p className="text-sm text-slate-600">Cliente</p>
-                  </div>
-                  <p className="font-medium text-slate-900">{session.clients?.full_name}</p>
-                  <p className="text-sm text-slate-600">{session.clients?.email}</p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Grid de información */}
-              <div className="grid md:grid-cols-3 gap-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="h-4 w-4 text-brand-blue-600" />
-                    <p className="text-sm text-slate-600">Fecha</p>
-                  </div>
-                  <p className="font-medium text-slate-900">
-                    {format(parseISO(session.scheduled_date), "d 'de' MMMM, yyyy", { locale: es })}
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="h-4 w-4 text-brand-blue-600" />
-                    <p className="text-sm text-slate-600">Hora y Duración</p>
-                  </div>
-                  <p className="font-medium text-slate-900">
-                    {format(parseISO(session.scheduled_date), 'HH:mm', { locale: es })} - {session.duration} min
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Video className="h-4 w-4 text-brand-blue-600" />
-                    <p className="text-sm text-slate-600">Tipo de Sesión</p>
-                  </div>
-                  <p className="font-medium text-slate-900 capitalize">
-                    {getSessionTypeLabel(session.session_type)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Coach Notes Card */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Notas del Coach
-              </CardTitle>
+              <CardTitle>Detalles de la Sesión</CardTitle>
+              <Badge className={getStatusColor(session.status)}>
+                {getStatusLabel(session.status)}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {session.clients && (
+              <>
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                      {getInitials(session.clients.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-semibold text-slate-900">{session.clients.full_name}</p>
+                    <p className="text-sm text-slate-600">{session.clients.email}</p>
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-slate-500" />
+                <div>
+                  <p className="text-sm text-slate-600">Fecha</p>
+                  <p className="font-medium">
+                    {format(parseISO(session.scheduled_date), "dd 'de' MMMM, yyyy", {
+                      locale: es,
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Clock className="h-5 w-5 text-slate-500" />
+                <div>
+                  <p className="text-sm text-slate-600">Hora y Duración</p>
+                  <p className="font-medium">
+                    {format(parseISO(session.scheduled_date), 'HH:mm', { locale: es })} -{' '}
+                    {session.duration} minutos
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <User className="h-5 w-5 text-slate-500" />
+                <div>
+                  <p className="text-sm text-slate-600">Cliente</p>
+                  <p className="font-medium">{session.clients?.full_name}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {session.session_type === 'online' ? (
+                  <Video className="h-5 w-5 text-slate-500" />
+                ) : (
+                  <MapPin className="h-5 w-5 text-slate-500" />
+                )}
+                <div>
+                  <p className="text-sm text-slate-600">Tipo de Sesión</p>
+                  <p className="font-medium">{getSessionTypeLabel(session.session_type)}</p>
+                </div>
+              </div>
+            </div>
+
+            {session.session_focus && session.session_focus.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold mb-2">Enfoque de la Sesión</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {session.session_focus.map((focus, index) => (
+                      <Badge key={index} variant="secondary">
+                        {focus}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Coach Notes (Editable) */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Notas del Coach
+                </CardTitle>
+                <CardDescription>Tus notas sobre esta sesión</CardDescription>
+              </div>
               {!isEditing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                >
+                <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
                 </Button>
               )}
             </div>
-            <CardDescription>Tus notas sobre esta sesión</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {isEditing ? (
               <>
-                <div className="space-y-2 mb-4">
-                  <Label htmlFor="sessionTitle">Título</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="title">Título de la Sesión</Label>
                   <Input
-                    id="sessionTitle"
+                    id="title"
                     value={sessionTitle}
                     onChange={(e) => setSessionTitle(e.target.value)}
-                    placeholder="Título de la sesión"
+                    placeholder="Ej: Acuerdo de Coaching"
                   />
                 </div>
 
@@ -392,7 +404,7 @@ export default function SessionDetailPage() {
                   />
                 </div>
 
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-2">
                   <Button onClick={handleSave} disabled={isSaving}>
                     {isSaving ? (
                       'Guardando...'
@@ -499,7 +511,6 @@ export default function SessionDetailPage() {
           </Card>
         )}
 
-        {/* Additional Information - Only for completed sessions */}
         {session.status === 'completed' && (
           <>
             {session.pre_session_mood && session.post_session_mood && (

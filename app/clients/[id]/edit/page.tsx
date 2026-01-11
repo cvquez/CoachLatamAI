@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-export default function NewClientPage() {
+export default function EditClientPage({ params }: { params: { id: string } }) {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -21,14 +21,58 @@ export default function NewClientPage() {
   const [position, setPosition] = useState('')
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<'active' | 'inactive' | 'completed'>('active')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
 
+  useEffect(() => {
+    loadClient()
+  }, [params.id])
+
+  const loadClient = async () => {
+    try {
+      const { data: client, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', params.id)
+        .single()
+
+      if (error) {
+        console.error('Error loading client:', error)
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'No se pudo cargar el cliente',
+        })
+        return
+      }
+
+      if (client) {
+        setFullName(client.full_name || '')
+        setEmail(client.email || '')
+        setPhone(client.phone || '')
+        setCompany(client.company || '')
+        setPosition(client.position || '')
+        setNotes(client.notes || '')
+        setStatus(client.status || 'active')
+      }
+    } catch (error) {
+      console.error('Exception loading client:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Ocurrió un error al cargar el cliente',
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setIsSaving(true)
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -39,50 +83,12 @@ export default function NewClientPage() {
           title: 'Error',
           description: 'Debes iniciar sesión',
         })
-        setIsLoading(false)
         return
       }
 
-      // Verificar plan y límites
-      const { data: user } = await supabase
-        .from('users')
-        .select('subscription_plan')
-        .eq('id', session.user.id)
-        .single()
-
-      const { count: clientCount } = await supabase
+      const { error } = await supabase
         .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .eq('coach_id', session.user.id)
-        .eq('status', 'active')
-
-      const PLAN_LIMITS: Record<string, number> = {
-        starter: 10,
-        professional: 30,
-        master: 999
-      }
-
-      const maxClients = PLAN_LIMITS[user?.subscription_plan || 'starter']
-
-      if ((clientCount || 0) >= maxClients) {
-        toast({
-          variant: 'destructive',
-          title: 'Límite alcanzado',
-          description: `Has alcanzado el límite de ${maxClients} clientes activos para tu plan`,
-        })
-        setIsLoading(false)
-        return
-      }
-
-      // Llamar a una función Edge de Supabase o API route para crear el usuario
-      // Esto evita el problema de cambio de contexto de auth
-      const response = await fetch('/api/clients/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          coach_id: session.user.id,
+        .update({
           full_name: fullName,
           email: email,
           phone: phone || null,
@@ -90,38 +96,46 @@ export default function NewClientPage() {
           position: position || null,
           notes: notes || null,
           status: status,
-        }),
-      })
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', params.id)
+        .eq('coach_id', session.user.id)
 
-      const result = await response.json()
-
-      if (!response.ok) {
+      if (error) {
+        console.error('Error updating client:', error)
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: result.error || 'No se pudo crear el cliente',
+          description: `No se pudo actualizar el cliente: ${error.message}`,
         })
-        setIsLoading(false)
         return
       }
 
       toast({
-        title: 'Cliente creado',
-        description: 'El cliente ha sido creado exitosamente',
+        title: 'Cliente actualizado',
+        description: 'Los cambios se han guardado exitosamente',
       })
 
-      router.push('/clients')
+      router.push(`/clients/${params.id}`)
       router.refresh()
     } catch (error) {
-      console.error('Exception creating client:', error)
+      console.error('Exception updating client:', error)
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Ocurrió un error al crear el cliente',
+        description: 'Ocurrió un error al actualizar el cliente',
       })
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-blue-600" />
+      </div>
+    )
   }
 
   return (
@@ -129,16 +143,16 @@ export default function NewClientPage() {
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/clients">
+            <Link href={`/clients/${params.id}`}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver a Clientes
+              Volver al Cliente
             </Link>
           </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Agregar Nuevo Cliente</CardTitle>
+            <CardTitle>Editar Cliente</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -151,7 +165,7 @@ export default function NewClientPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isSaving}
                 />
               </div>
 
@@ -164,11 +178,8 @@ export default function NewClientPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isSaving}
                 />
-                <p className="text-xs text-slate-500">
-                  Se creará una cuenta para que el cliente pueda acceder a su dashboard
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -179,7 +190,7 @@ export default function NewClientPage() {
                   placeholder="+595 972 444 079"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isSaving}
                 />
               </div>
 
@@ -192,7 +203,7 @@ export default function NewClientPage() {
                     placeholder="Empresa ABC"
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isSaving}
                   />
                 </div>
 
@@ -204,7 +215,7 @@ export default function NewClientPage() {
                     placeholder="Gerente"
                     value={position}
                     onChange={(e) => setPosition(e.target.value)}
-                    disabled={isLoading}
+                    disabled={isSaving}
                   />
                 </div>
               </div>
@@ -214,7 +225,7 @@ export default function NewClientPage() {
                 <Select
                   value={status}
                   onValueChange={(value: any) => setStatus(value)}
-                  disabled={isLoading}
+                  disabled={isSaving}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -235,30 +246,30 @@ export default function NewClientPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={4}
-                  disabled={isLoading}
+                  disabled={isSaving}
                 />
               </div>
 
               <div className="flex gap-4">
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isSaving}
                   className="flex-1"
                 >
-                  {isLoading ? (
+                  {isSaving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Guardando...
                     </>
                   ) : (
-                    'Crear Cliente'
+                    'Guardar Cambios'
                   )}
                 </Button>
-                <Link href="/clients" className="flex-1">
+                <Link href={`/clients/${params.id}`} className="flex-1">
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={isLoading}
+                    disabled={isSaving}
                     className="w-full"
                   >
                     Cancelar

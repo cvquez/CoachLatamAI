@@ -44,15 +44,24 @@ export interface User {
   created_at: string
 }
 
+// Interfaz actualizada según la estructura real de la tabla clients
 export interface Client {
   id: string
   coach_id: string
-  name: string
-  email: string
+  user_id: string  // ID del usuario auth del cliente
+  full_name: string  // ← IMPORTANTE: La tabla usa 'full_name', no 'name'
+  email?: string
   phone?: string
-  profile_image?: string
-  status: ClientStatus
+  company?: string
+  position?: string
+  coaching_focus?: string[]
+  start_date?: string
+  end_date?: string
+  status?: ClientStatus
   notes?: string
+  avatar_url?: string
+  timezone?: string
+  preferred_language?: string
   created_at: string
   updated_at: string
 }

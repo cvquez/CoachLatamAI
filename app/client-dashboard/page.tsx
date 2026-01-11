@@ -26,43 +26,30 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-interface CoachProfile {
-  user_id: string
-  display_name: string
-  avatar_url: string
-  specializations: string[]
-}
-
-interface CoachRelationship {
+interface Coach {
   id: string
-  coach_id: string
-  status: string
+  full_name: string
+  email: string
+  phone?: string
+  avatar_url?: string
   start_date: string
-  total_sessions_purchased: number
-  sessions_completed: number
-  sessions_remaining: number
-  session_rate: number
-  coaching_focus: string
-  // Datos del coach agregados manualmente
-  coach_display_name?: string
-  coach_avatar_url?: string
-  coach_specializations?: string[]
+  status: string
 }
 
 interface Session {
   id: string
-  scheduled_date: string  // ✅ CORREGIDO: era 'date'
+  scheduled_date: string
   status: string
   session_type: string
-  duration: number  // ✅ CORREGIDO: cambié duration_minutes a duration para consistencia
+  duration: number
   notes: string
   coach_id: string
-  coach_display_name?: string
+  coach_full_name?: string
   coach_avatar_url?: string
 }
 
 export default function ClientDashboardPage() {
-  const [coaches, setCoaches] = useState<CoachRelationship[]>([])
+  const [coaches, setCoaches] = useState<Coach[]>([])
   const [recentSessions, setRecentSessions] = useState<Session[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [userData, setUserData] = useState<any>(null)
@@ -88,7 +75,7 @@ export default function ClientDashboardPage() {
         return
       }
 
-      console.log('Loading dashboard for user:', user.id)
+      console.log('🔍 Loading dashboard for user:', user.id)
 
       // Obtener perfil del usuario
       const { data: profile } = await supabase
@@ -99,103 +86,124 @@ export default function ClientDashboardPage() {
 
       setUserData(profile)
 
-      // ✅ CORREGIDO: Primero obtener el client_id de la tabla clients
-      const { data: clientRecord } = await supabase
+      // ⭐ OBTENER MIS COACHES (SIN JOIN - queries separadas)
+      console.log('🔍 Buscando coaches en tabla clients...')
+      
+      // Paso 1: Obtener relaciones
+      const { data: clientRelations, error: relError } = await supabase
         .from('clients')
-        .select('id')
+        .select('id, coach_id, status, start_date, created_at')
         .eq('user_id', user.id)
-        .single()
-
-      if (!clientRecord) {
-        console.error('No client record found')
-        setIsLoading(false)
-        return
-      }
-
-      console.log('Client record:', clientRecord)
-
-      // 1. Obtener relaciones coach-cliente usando client_id correcto
-      const { data: relations, error: relError } = await supabase
-        .from('coach_client_relationships')
-        .select('*')
-        .eq('client_id', clientRecord.id)  // ✅ CORREGIDO: usar clientRecord.id
         .eq('status', 'active')
-        .order('start_date', { ascending: false })
+        .order('created_at', { ascending: false })
 
-      console.log('Coach relations:', relations, 'Error:', relError)
+      console.log('📊 Client relations:', clientRelations)
+      console.log('❌ Error:', relError)
 
-      // 2. Si hay relaciones, obtener los perfiles de los coaches
-      if (relations && relations.length > 0) {
-        const coachIds = relations.map(r => r.coach_id)
-        
-        const { data: coachProfiles, error: cpError } = await supabase
-          .from('coach_profiles')
-          .select('user_id, display_name, avatar_url, specializations')
-          .in('user_id', coachIds)
+      if (clientRelations && clientRelations.length > 0) {
+        // Paso 2: Obtener IDs de coaches
+        const coachIds = clientRelations.map(rel => rel.coach_id)
+        console.log('🔍 Coach IDs:', coachIds)
 
-        console.log('Coach profiles:', coachProfiles, 'Error:', cpError)
+        // Paso 3: Obtener datos de coaches por separado
+        const { data: coachData, error: coachError } = await supabase
+          .from('users')
+          .select('id, full_name, email, phone')
+          .in('id', coachIds)
 
-        // Combinar relaciones con perfiles
-        const coachesWithProfiles = relations.map(rel => {
-          const profile = coachProfiles?.find(cp => cp.user_id === rel.coach_id)
-          return {
-            ...rel,
-            coach_display_name: profile?.display_name || 'Coach',
-            coach_avatar_url: profile?.avatar_url || '',
-            coach_specializations: profile?.specializations || []
-          }
-        })
+        console.log('📊 Coach data:', coachData)
+        console.log('❌ Coach error:', coachError)
 
-        setCoaches(coachesWithProfiles)
-        setStats(prev => ({ ...prev, totalCoaches: coachesWithProfiles.length }))
+        if (coachData && coachData.length > 0) {
+          // Paso 4: Combinar relaciones con datos de coaches
+          const coachesData = clientRelations.map(rel => {
+            const coach = coachData.find(c => c.id === rel.coach_id)
+            return {
+              id: rel.coach_id,
+              full_name: coach?.full_name || 'Coach',
+              email: coach?.email || '',
+              phone: coach?.phone || '',
+              avatar_url: '',
+              start_date: rel.start_date || rel.created_at,
+              status: rel.status
+            }
+          })
+
+          console.log('✅ Coaches encontrados:', coachesData)
+          setCoaches(coachesData)
+          setStats(prev => ({ ...prev, totalCoaches: coachesData.length }))
+        } else {
+          console.log('⚠️ No se pudieron obtener datos de coaches')
+        }
+      } else {
+        console.log('⚠️ No se encontraron relaciones de coaches')
       }
 
-      // 3. Obtener sesiones recientes usando client_id correcto
-      const { data: sessions, error: sessError } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('client_id', clientRecord.id)  // ✅ CORREGIDO: usar clientRecord.id
-        .order('scheduled_date', { ascending: false })  // ✅ CORREGIDO: era 'date'
-        .limit(5)
+      // ⭐ OBTENER MIS SESIONES (SIN JOIN - queries separadas)
+      console.log('🔍 Buscando sesiones...')
+      
+      // Paso 1: Obtener todos los client_ids donde user_id = current user
+      const { data: myClientRecords } = await supabase
+        .from('clients')
+        .select('id, coach_id')
+        .eq('user_id', user.id)
 
-      console.log('Sessions:', sessions, 'Error:', sessError)
+      console.log('📊 My client records:', myClientRecords)
 
-      if (sessions && sessions.length > 0) {
-        // Obtener perfiles de coaches de las sesiones
-        const sessionCoachIds = [...new Set(sessions.map(s => s.coach_id))]
+      if (myClientRecords && myClientRecords.length > 0) {
+        const clientIds = myClientRecords.map(r => r.id)
         
-        const { data: sessionCoachProfiles } = await supabase
-          .from('coach_profiles')
-          .select('user_id, display_name, avatar_url')
-          .in('user_id', sessionCoachIds)
+        // Paso 2: Obtener sesiones
+        const { data: sessions, error: sessError } = await supabase
+          .from('sessions')
+          .select('*')
+          .in('client_id', clientIds)
+          .order('scheduled_date', { ascending: false })
+          .limit(5)
 
-        // Combinar sesiones con perfiles
-        const sessionsWithCoaches = sessions.map(session => {
-          const coachProfile = sessionCoachProfiles?.find(cp => cp.user_id === session.coach_id)
-          return {
-            ...session,
-            coach_display_name: coachProfile?.display_name || 'Coach',
-            coach_avatar_url: coachProfile?.avatar_url || ''
-          }
-        })
+        console.log('📊 Sessions:', sessions)
+        console.log('❌ Error:', sessError)
 
-        setRecentSessions(sessionsWithCoaches)
+        if (sessions && sessions.length > 0) {
+          // Paso 3: Obtener IDs de coaches de las sesiones
+          const sessionCoachIds = [...new Set(sessions.map(s => s.coach_id))]
+          
+          const { data: sessionCoachData } = await supabase
+            .from('users')
+            .select('id, full_name')
+            .in('id', sessionCoachIds)
 
-        // Calcular estadísticas
-        const completed = sessions.filter(s => s.status === 'completed').length
-        const upcoming = sessions.filter(s => 
-          s.status === 'scheduled' && new Date(s.scheduled_date) > new Date()  // ✅ CORREGIDO: era s.date
-        ).length
-        
-        setStats(prev => ({
-          ...prev,
-          completedSessions: completed,
-          upcomingSessions: upcoming
-        }))
+          console.log('📊 Session coach data:', sessionCoachData)
+
+          // Paso 4: Combinar sesiones con datos de coaches
+          const sessionsData = sessions.map(s => {
+            const coach = sessionCoachData?.find(c => c.id === s.coach_id)
+            return {
+              ...s,
+              coach_full_name: coach?.full_name || 'Coach',
+              coach_avatar_url: ''
+            }
+          })
+
+          console.log('✅ Sessions con coaches:', sessionsData)
+          setRecentSessions(sessionsData)
+
+          // Calcular estadísticas
+          const completed = sessions.filter(s => s.status === 'completed').length
+          const upcoming = sessions.filter(s => 
+            s.status === 'scheduled' && new Date(s.scheduled_date) > new Date()
+          ).length
+          
+          setStats(prev => ({
+            ...prev,
+            completedSessions: completed,
+            upcomingSessions: upcoming
+          }))
+        }
       }
 
     } catch (error) {
-      console.error('Error loading data:', error)
+      console.error('💥 Error loading data:', error)
     } finally {
       setIsLoading(false)
     }
@@ -211,34 +219,46 @@ export default function ClientDashboardPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      scheduled: { label: 'Programada', variant: 'default' },
-      completed: { label: 'Completada', variant: 'secondary' },
-      cancelled: { label: 'Cancelada', variant: 'destructive' },
-      'in-progress': { label: 'En Progreso', variant: 'outline' }
+    const styles = {
+      scheduled: 'bg-blue-100 text-blue-800',
+      'in-progress': 'bg-yellow-100 text-yellow-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800',
+      no_show: 'bg-gray-100 text-gray-800'
     }
-    const config = statusConfig[status] || { label: status, variant: 'outline' }
-    return <Badge variant={config.variant}>{config.label}</Badge>
+
+    const labels = {
+      scheduled: 'Programada',
+      'in-progress': 'En progreso',
+      completed: 'Completada',
+      cancelled: 'Cancelada',
+      no_show: 'No asistió'
+    }
+
+    return (
+      <Badge className={styles[status as keyof typeof styles] || styles.scheduled}>
+        {labels[status as keyof typeof labels] || status}
+      </Badge>
+    )
   }
 
   const formatSessionDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return format(date, "d 'de' MMMM, yyyy - HH:mm", { locale: es })
+    try {
+      return format(new Date(dateString), "d 'de' MMMM, yyyy - HH:mm", { locale: es })
+    } catch {
+      return dateString
+    }
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-slate-50">
+        <div className="container mx-auto px-4 py-8">
           <Skeleton className="h-12 w-64 mb-8" />
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            {[...Array(4)].map((_, i) => (
+            {[1, 2, 3, 4].map(i => (
               <Skeleton key={i} className="h-32" />
             ))}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Skeleton className="h-96" />
-            <Skeleton className="h-96" />
           </div>
         </div>
       </div>
@@ -247,18 +267,18 @@ export default function ClientDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto p-8">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            ¡Hola, {userData?.full_name?.split(' ')[0]}! 👋
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">
+            ¡Hola, {userData?.full_name?.split(' ')[0] || 'Usuario'}! 👋
           </h1>
           <p className="text-slate-600">
             Aquí está el resumen de tu progreso de coaching
           </p>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6">
@@ -332,14 +352,6 @@ export default function ClientDashboardPage() {
                     Coaches con los que estás trabajando actualmente
                   </CardDescription>
                 </div>
-                {coaches.length > 0 && (
-                  <Link href="/client-dashboard/coaches">
-                    <Button variant="ghost" size="sm" className="text-blue-600">
-                      Ver todos
-                      <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </Link>
-                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -356,44 +368,36 @@ export default function ClientDashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {coaches.map((relation) => (
+                  {coaches.map((coach) => (
                     <div 
-                      key={relation.id}
+                      key={coach.id}
                       className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
                     >
                       <div className="flex items-center gap-4">
                         <Avatar className="h-12 w-12">
-                          <AvatarImage src={relation.coach_avatar_url} />
+                          <AvatarImage src={coach.avatar_url} />
                           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                            {getInitials(relation.coach_display_name || 'C')}
+                            {getInitials(coach.full_name)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-semibold text-slate-900">
-                            {relation.coach_display_name}
+                            {coach.full_name}
                           </p>
                           <p className="text-sm text-slate-600">
-                            {relation.coaching_focus || relation.coach_specializations?.[0] || 'Coaching'}
+                            {coach.email}
                           </p>
-                          <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              {relation.sessions_completed} completadas
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {relation.sessions_remaining} restantes
-                            </span>
-                          </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                           Activo
                         </Badge>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Desde {format(new Date(relation.start_date), "MMM yyyy", { locale: es })}
-                        </p>
+                        {coach.start_date && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            Desde {format(new Date(coach.start_date), "MMM yyyy", { locale: es })}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -450,16 +454,16 @@ export default function ClientDashboardPage() {
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={session.coach_avatar_url} />
                             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
-                              {getInitials(session.coach_display_name || 'C')}
+                              {getInitials(session.coach_full_name || 'C')}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="font-medium text-slate-900">
-                              {session.coach_display_name}
+                              {session.coach_full_name}
                             </p>
                             <div className="flex items-center gap-2 text-xs text-slate-500">
                               <Calendar className="h-3 w-3" />
-                              {formatSessionDate(session.scheduled_date)}  {/* ✅ CORREGIDO: era session.date */}
+                              {formatSessionDate(session.scheduled_date)}
                             </div>
                           </div>
                         </div>

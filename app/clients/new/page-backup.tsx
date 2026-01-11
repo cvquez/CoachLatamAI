@@ -14,11 +14,9 @@ import Link from 'next/link'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function NewClientPage() {
-  const [fullName, setFullName] = useState('')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [company, setCompany] = useState('')
-  const [position, setPosition] = useState('')
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState<'active' | 'inactive' | 'completed'>('active')
   const [isLoading, setIsLoading] = useState(false)
@@ -39,11 +37,9 @@ export default function NewClientPage() {
           title: 'Error',
           description: 'Debes iniciar sesión',
         })
-        setIsLoading(false)
         return
       }
 
-      // Verificar plan y límites
       const { data: user } = await supabase
         .from('users')
         .select('subscription_plan')
@@ -74,34 +70,24 @@ export default function NewClientPage() {
         return
       }
 
-      // Llamar a una función Edge de Supabase o API route para crear el usuario
-      // Esto evita el problema de cambio de contexto de auth
-      const response = await fetch('/api/clients/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { error } = await supabase
+        .from('clients')
+        .insert({
           coach_id: session.user.id,
-          full_name: fullName,
-          email: email,
+          full_name: name,  // Cambiado de 'name' a 'full_name'
+          email,
           phone: phone || null,
-          company: company || null,
-          position: position || null,
           notes: notes || null,
-          status: status,
-        }),
-      })
+          status,
+        })
 
-      const result = await response.json()
-
-      if (!response.ok) {
+      if (error) {
+        console.error('Error creating client:', error)
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: result.error || 'No se pudo crear el cliente',
+          description: `No se pudo crear el cliente: ${error.message}`,
         })
-        setIsLoading(false)
         return
       }
 
@@ -113,7 +99,6 @@ export default function NewClientPage() {
       router.push('/clients')
       router.refresh()
     } catch (error) {
-      console.error('Exception creating client:', error)
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -143,13 +128,13 @@ export default function NewClientPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Nombre completo *</Label>
+                <Label htmlFor="name">Nombre completo *</Label>
                 <Input
-                  id="fullName"
+                  id="name"
                   type="text"
                   placeholder="Juan Pérez"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                   disabled={isLoading}
                 />
@@ -166,9 +151,6 @@ export default function NewClientPage() {
                   required
                   disabled={isLoading}
                 />
-                <p className="text-xs text-slate-500">
-                  Se creará una cuenta para que el cliente pueda acceder a su dashboard
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -176,37 +158,11 @@ export default function NewClientPage() {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="+595 972 444 079"
+                  placeholder="+1 234 567 8900"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={isLoading}
                 />
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="company">Empresa</Label>
-                  <Input
-                    id="company"
-                    type="text"
-                    placeholder="Empresa ABC"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="position">Cargo</Label>
-                  <Input
-                    id="position"
-                    type="text"
-                    placeholder="Gerente"
-                    value={position}
-                    onChange={(e) => setPosition(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
               </div>
 
               <div className="space-y-2">
