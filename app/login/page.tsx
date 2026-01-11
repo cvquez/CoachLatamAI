@@ -73,15 +73,23 @@ export default function LoginPage() {
         })
 
         await new Promise(resolve => setTimeout(resolve, 100))
+const isClient =
+  userProfile?.user_type === 'client' ||
+  userProfile?.role === 'client'
 
+if (isClient) {
+  window.location.href = '/client-dashboard'
+} else {
+  window.location.href = '/dashboard'
+}
         // ✅ NUEVO: Redirigir según el tipo de usuario
-        if (userProfile?.user_type === 'client') {
-          console.log('Redirecting to client dashboard...')
-          window.location.href = '/client-dashboard'
-        } else {
-          console.log('Redirecting to coach dashboard...')
-          window.location.href = '/dashboard'
-        }
+        //if (userProfile?.user_type === 'client') {
+        //  console.log('Redirecting to client dashboard...')
+        //  window.location.href = '/client-dashboard'
+        //} else {
+        //  console.log('Redirecting to coach dashboard...')
+        //  window.location.href = '/dashboard'
+        //}
       } else {
         console.log('No session in response')
         setIsLoading(false)

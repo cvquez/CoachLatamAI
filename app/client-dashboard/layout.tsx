@@ -59,10 +59,14 @@ export default function ClientDashboardLayout({ children }: ClientLayoutProps) {
 
       if (profile) {
         // Verificar que es un cliente
-        if (profile.user_type !== 'client') {
-          router.push('/dashboard')
-          return
-        }
+const isClient =
+  profile?.user_type === 'client' ||
+  profile?.role === 'client'
+
+if (!isClient) {
+  router.push('/dashboard')
+  return
+}
         setUserProfile(profile)
       }
     } catch (error) {

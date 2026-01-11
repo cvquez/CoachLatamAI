@@ -76,8 +76,7 @@ export async function POST(request: NextRequest) {
       console.log('❌ Usuario no existe, creando nuevo...')
       
       // Crear contraseña temporal
-      const temporaryPassword = Math.random().toString(36).slice(-10) + 'Aa1!'
-      
+      const temporaryPassword = '123456789'
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: email,
         password: temporaryPassword,
@@ -107,23 +106,26 @@ export async function POST(request: NextRequest) {
       console.log('✅ Usuario auth creado:', userId)
 
       // Crear registro en la tabla users
-      const { error: userError } = await supabaseAdmin
-        .from('users')
-        .insert({
-          id: userId,
-          email: email,
-          full_name: full_name,
-          role: 'client',
-          user_type: 'client',
-          subscription_plan: 'starter',
-          subscription_status: 'active'
-        })
+const { error: userError } = await supabaseAdmin
+  .from('users')
+  .upsert(
+    {
+      id: userId,
+      email: email,
+      full_name: full_name,
+      role: 'client',
+      user_type: 'client',
+      subscription_plan: 'starter',
+      subscription_status: 'active',
+    },
+    { onConflict: 'id' } // importante
+  )
 
-      if (userError && !userError.message.includes('duplicate')) {
-        console.warn('Warning creating user record:', userError)
-      } else {
-        console.log('✅ Usuario creado en tabla users')
-      }
+if (userError) {
+  console.warn('Warning upserting user record:', userError)
+} else {
+  console.log('✅ Usuario upsert en tabla users (role=client)')
+}
 
       // TODO: Aquí deberías enviar un email al cliente
       // con un link para que establezca su contraseña
