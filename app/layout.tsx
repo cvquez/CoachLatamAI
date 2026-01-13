@@ -11,8 +11,14 @@ export const metadata: Metadata = {
   description: 'Plataforma integral de gestión de coaching profesional',
 
   icons: {
-    icon: '/app/favicon.png',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: '/apple-icon.png',
   },
+
+  manifest: '/manifest.json',
 
 // openGraph: {
 //    images: [
