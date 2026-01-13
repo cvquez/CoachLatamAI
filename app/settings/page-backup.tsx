@@ -5,13 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, User, CreditCard } from 'lucide-react'
-import SubscriptionManagement from '@/components/subscription/SubscriptionManagement' // ← NUEVO IMPORT
-import { Separator } from '@/components/ui/separator' // Si no existe, crearlo o usar <hr>
+import SubscriptionManagement from '@/components/subscription/SubscriptionManagement'
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null)
@@ -20,11 +18,11 @@ export default function SettingsPage() {
   const { toast } = useToast()
   const supabase = createClient()
 
-  // Campos del formulario
-  const [name, setName] = useState('')
+  // Datos del perfil
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [coachingTypes, setCoachingTypes] = useState<string[]>([])
-  const [coachingMethods, setCoachingMethods] = useState<string[]>([])
+  const [specializations, setSpecializations] = useState<string[]>([])
+  const [languages, setLanguages] = useState<string[]>([])
 
   useEffect(() => {
     loadUserData()
@@ -38,32 +36,50 @@ export default function SettingsPage() {
         return
       }
 
+      console.log('Loading user data for:', authUser.id)
+
       // Obtener datos del usuario
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('id', authUser.id)
         .single()
 
+      if (userError) {
+        console.error('Error loading user:', userError)
+      }
+
       // Obtener perfil de coach
-      const { data: coachProfile } = await supabase
+      const { data: coachProfile, error: profileError } = await supabase
         .from('coach_profiles')
         .select('*')
         .eq('user_id', authUser.id)
         .single()
 
+      if (profileError) {
+        console.error('Error loading coach profile:', profileError)
+      }
+
+      console.log('Coach profile:', coachProfile)
+
       if (userData) {
         setUser(userData)
-        setName(userData.full_name || '')
+        setFullName(userData.full_name || '')
         setEmail(userData.email || '')
       }
 
       if (coachProfile) {
-        setCoachingTypes(coachProfile.coaching_types || [])
-        setCoachingMethods(coachProfile.coaching_methods || [])
+        // La columna se llama 'specializations' en la BD
+        setSpecializations(coachProfile.specializations || [])
+        setLanguages(coachProfile.languages || [])
       }
     } catch (error) {
       console.error('Error loading user data:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo cargar la información del perfil',
+      })
     } finally {
       setLoading(false)
     }
@@ -80,22 +96,11 @@ export default function SettingsPage() {
       const { error: userError } = await supabase
         .from('users')
         .update({
-          full_name: name,
+          full_name: fullName,
         })
         .eq('id', authUser.id)
 
       if (userError) throw userError
-
-      // Actualizar perfil de coach
-      const { error: profileError } = await supabase
-        .from('coach_profiles')
-        .update({
-          coaching_types: coachingTypes,
-          coaching_methods: coachingMethods,
-        })
-        .eq('user_id', authUser.id)
-
-      if (profileError) throw profileError
 
       toast({
         title: 'Cambios guardados',
@@ -149,8 +154,8 @@ export default function SettingsPage() {
               <Label htmlFor="name">Nombre</Label>
               <Input
                 id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 placeholder="Tu nombre completo"
               />
             </div>
@@ -169,44 +174,52 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            {/* Especializaciones (solo lectura) */}
             <div className="space-y-2">
               <Label>Tipos de Coaching</Label>
               <div className="text-sm text-slate-600">
-                {coachingTypes.length > 0 ? (
+                {specializations.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {coachingTypes.map((type) => (
+                    {specializations.map((type) => (
                       <span
                         key={type}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full"
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
                       >
                         {type}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-slate-500">-</p>
+                  <p className="text-slate-500">No hay tipos de coaching definidos</p>
                 )}
               </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Para cambiar tus especializaciones, contacta al administrador
+              </p>
             </div>
 
+            {/* Idiomas (solo lectura) */}
             <div className="space-y-2">
-              <Label>Métodos de Coaching</Label>
+              <Label>Idiomas</Label>
               <div className="text-sm text-slate-600">
-                {coachingMethods.length > 0 ? (
+                {languages.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {coachingMethods.map((method) => (
+                    {languages.map((lang) => (
                       <span
-                        key={method}
-                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full"
+                        key={lang}
+                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm"
                       >
-                        {method}
+                        {lang}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-slate-500">-</p>
+                  <p className="text-slate-500">No hay idiomas definidos</p>
                 )}
               </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Para cambiar tus idiomas, contacta al administrador
+              </p>
             </div>
 
             <div className="pt-4">
@@ -224,9 +237,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* ========================================= */}
-        {/* NUEVA SECCIÓN: SUSCRIPCIÓN */}
-        {/* ========================================= */}
+        {/* Suscripción */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-slate-600" />

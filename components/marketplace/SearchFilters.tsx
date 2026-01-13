@@ -29,6 +29,7 @@ interface SearchFiltersProps {
 
 // Mapeo de valores en inglés (base de datos) a claves de traducción
 const SPECIALIZATIONS_MAP: Record<string, { en: string; es: string }> = {
+  "Athernus": { en: "Athernus", es: "Athernus" },
   "Executive Coaching": { en: "Executive Coaching", es: "Coaching Ejecutivo" },
   "Life Coaching": { en: "Life Coaching", es: "Coaching de Vida" },
   "Career Coaching": { en: "Career Coaching", es: "Coaching de Carrera" },

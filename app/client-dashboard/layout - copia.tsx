@@ -170,9 +170,23 @@ if (!isClient) {
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
+                  
+                  <DropdownMenuItem asChild>
+                    <Link href="/client-dashboard/sessions" className="cursor-pointer">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Mis Sesiones
+                    </Link>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem asChild>
+                    <Link href="/client-dashboard/coaches" className="cursor-pointer">
+                      <Users className="mr-2 h-4 w-4" />
+                      Mis Coaches
+                    </Link>
+                  </DropdownMenuItem>
 
                   <DropdownMenuItem asChild>
-                    <Link href="/client-dashboard/settings" className="cursor-pointer">
+                    <Link href="/settings" className="cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
                       Configuración
                     </Link>

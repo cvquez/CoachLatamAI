@@ -183,6 +183,7 @@ const translations: Record<Language, Record<string, string>> = {
     'sort.most_experience': 'Most Experience',
     
     // Especializaciones
+    'spec.athernus': 'Athernus',
     'spec.executive': 'Executive Coaching',
     'spec.life': 'Life Coaching',
     'spec.career': 'Career Coaching',

@@ -14,22 +14,22 @@ export const metadata: Metadata = {
     icon: '/app/favicon.png',
   },
 
-  openGraph: {
-    images: [
-      {
-        url: 'https://bolt.new/static/og_default.png',
-      },
-    ],
-  },
-
-  twitter: {
-    card: 'summary_large_image',
-    images: [
-      {
-        url: 'https://bolt.new/static/og_default.png',
-      },
-    ],
-  },
+// openGraph: {
+//    images: [
+//      {
+//        url: 'https://bolt.new/static/og_default.png',
+//      },
+//    ],
+//  },
+//
+//  twitter: {
+//    card: 'summary_large_image',
+//    images: [
+//      {
+//        url: 'https://bolt.new/static/og_default.png',
+//      },
+//    ],
+//  },
 };
 
 

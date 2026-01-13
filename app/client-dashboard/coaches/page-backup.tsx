@@ -14,40 +14,34 @@ import {
   ArrowLeft,
   Linkedin,
   Target,
-  Award,
-  Mail,
-  Phone,
-  Search,
-  MessageSquare
+  Award
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-interface Coach {
+interface CoachRelationship {
   id: string
-  full_name: string
-  email: string
-  phone?: string
-  start_date: string
+  coach_id: string
   status: string
-  // Coach profile info
-  display_name?: string
-  avatar_url?: string
-  specializations?: string[]
-  bio?: string
-  years_experience?: number
-  certifications?: string[]
-  linkedin_url?: string
-  // Session stats
-  total_sessions?: number
-  completed_sessions?: number
-  upcoming_sessions?: number
+  start_date: string
+  total_sessions_purchased: number
+  sessions_completed: number
+  sessions_remaining: number
+  session_rate: number
+  coaching_focus: string
+  coach_display_name?: string
+  coach_avatar_url?: string
+  coach_specializations?: string[]
+  coach_bio?: string
+  coach_years_experience?: number
+  coach_certifications?: string[]
+  coach_linkedin_url?: string
 }
 
 export default function ClientCoachesPage() {
-  const [coaches, setCoaches] = useState<Coach[]>([])
+  const [coaches, setCoaches] = useState<CoachRelationship[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
   const router = useRouter()
@@ -65,89 +59,90 @@ export default function ClientCoachesPage() {
         return
       }
 
-      console.log('🔍 Loading coaches for user:', user.id)
-
-      // ⭐ PASO 1: Obtener relaciones de coaches desde tabla CLIENTS (CORRECTO)
-      const { data: clientRelations, error: relError } = await supabase
-        .from('clients')  // ✅ TABLA CORRECTA
-        .select('id, coach_id, status, start_date, created_at')
+      // Obtener client_id usando user_id
+      const { data: clientRecord } = await supabase
+        .from('clients')
+        .select('id')
         .eq('user_id', user.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
+        .single()
 
-      console.log('📊 Client relations:', clientRelations)
-      console.log('❌ Error:', relError)
+      if (!clientRecord) {
+        console.error('No client record found')
+        setIsLoading(false)
+        return
+      }
 
-      if (!clientRelations || clientRelations.length === 0) {
-        console.log('⚠️ No se encontraron coaches')
+      console.log('Client ID:', clientRecord.id)
+
+      // ✅ SIMPLIFICADO: Obtener relaciones sin foreign key compleja
+      const { data: relations, error: relError } = await supabase
+        .from('coach_client_relationships')
+        .select('*')
+        .eq('client_id', clientRecord.id)
+        .order('start_date', { ascending: false })
+
+      console.log('Coach relations:', relations, 'Error:', relError)
+
+      if (relError) {
+        console.error('Error loading relations:', relError)
+        setIsLoading(false)
+        return
+      }
+
+      if (!relations || relations.length === 0) {
+        console.log('No relations found')
         setCoaches([])
         setIsLoading(false)
         return
       }
 
-      // ⭐ PASO 2: Obtener IDs de coaches
-      const coachIds = clientRelations.map(rel => rel.coach_id)
-      console.log('🔍 Coach IDs:', coachIds)
-
-      // ⭐ PASO 3: Obtener datos básicos de coaches (tabla users)
-      const { data: coachData, error: coachError } = await supabase
-        .from('users')
-        .select('id, full_name, email, phone')
-        .in('id', coachIds)
-
-      console.log('📊 Coach data:', coachData)
-      console.log('❌ Coach error:', coachError)
-
-      // ⭐ PASO 4: Obtener perfiles de coaches (tabla coach_profiles)
-      const { data: coachProfiles } = await supabase
+      // ✅ Obtener perfiles de coaches por separado
+      const coachIds = relations.map(r => r.coach_id)
+      
+      console.log('🔍 Looking for coach IDs:', coachIds)
+      
+      const { data: coachProfiles, error: cpError } = await supabase
         .from('coach_profiles')
-        .select('user_id, display_name, specializations, bio, avatar_url, years_experience, certifications, linkedin_url')
+        .select('user_id, display_name, avatar_url, specializations, bio, years_experience, certifications, linkedin_url')
         .in('user_id', coachIds)
 
-      console.log('📊 Coach profiles:', coachProfiles)
+      console.log('✅ Coach profiles found:', coachProfiles)
+      console.log('❌ Coach profiles error:', cpError)
+      
+      // 🔍 DIAGNÓSTICO ADICIONAL: Buscar el perfil directamente
+      if (!coachProfiles || coachProfiles.length === 0) {
+        console.log('⚠️ No profiles found with .in() query, trying direct query...')
+        for (const coachId of coachIds) {
+          const { data: directProfile, error: directError } = await supabase
+            .from('coach_profiles')
+            .select('*')
+            .eq('user_id', coachId)
+            .single()
+          
+          console.log(`🔍 Direct query for ${coachId}:`, directProfile, directError)
+        }
+      }
 
-      // ⭐ PASO 5: Obtener estadísticas de sesiones por coach
-      const clientIds = clientRelations.map(rel => rel.id)
-      const { data: sessions } = await supabase
-        .from('sessions')
-        .select('coach_id, status, client_id')
-        .in('client_id', clientIds)
-
-      console.log('📊 Sessions:', sessions)
-
-      // ⭐ PASO 6: Combinar toda la información
-      const coachesData: Coach[] = clientRelations.map(rel => {
-        const coach = coachData?.find(c => c.id === rel.coach_id)
+      // ✅ Combinar relaciones con perfiles manualmente
+      const coachesWithProfiles = relations.map(rel => {
         const profile = coachProfiles?.find(cp => cp.user_id === rel.coach_id)
-        const coachSessions = sessions?.filter(s => s.coach_id === rel.coach_id) || []
-        
         return {
-          id: rel.coach_id,
-          full_name: coach?.full_name || profile?.display_name || 'Coach',
-          email: coach?.email || '',
-          phone: coach?.phone || '',
-          start_date: rel.start_date || rel.created_at,
-          status: rel.status,
-          // Profile info
-          display_name: profile?.display_name,
-          avatar_url: profile?.avatar_url,
-          specializations: profile?.specializations || [],
-          bio: profile?.bio,
-          years_experience: profile?.years_experience,
-          certifications: profile?.certifications || [],
-          linkedin_url: profile?.linkedin_url,
-          // Session stats
-          total_sessions: coachSessions.length,
-          completed_sessions: coachSessions.filter(s => s.status === 'completed').length,
-          upcoming_sessions: coachSessions.filter(s => s.status === 'scheduled').length,
+          ...rel,
+          coach_display_name: profile?.display_name || 'Coach',
+          coach_avatar_url: profile?.avatar_url || '',
+          coach_specializations: profile?.specializations || [],
+          coach_bio: profile?.bio || '',
+          coach_years_experience: profile?.years_experience || 0,
+          coach_certifications: profile?.certifications || [],
+          coach_linkedin_url: profile?.linkedin_url || ''
         }
       })
 
-      console.log('✅ Coaches con datos completos:', coachesData)
-      setCoaches(coachesData)
-
+      console.log('Final coaches with profiles:', coachesWithProfiles)
+      setCoaches(coachesWithProfiles)
+      
     } catch (error) {
-      console.error('💥 Error loading coaches:', error)
+      console.error('Error:', error)
     } finally {
       setIsLoading(false)
     }
@@ -227,7 +222,7 @@ export default function ClientCoachesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {coaches.reduce((sum, c) => sum + (c.completed_sessions || 0), 0)}
+                  {coaches.reduce((sum, c) => sum + (c.sessions_completed || 0), 0)}
                 </p>
                 <p className="text-sm text-slate-600">Sesiones Completadas</p>
               </div>
@@ -243,9 +238,9 @@ export default function ClientCoachesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {coaches.reduce((sum, c) => sum + (c.upcoming_sessions || 0), 0)}
+                  {coaches.reduce((sum, c) => sum + (c.sessions_remaining || 0), 0)}
                 </p>
-                <p className="text-sm text-slate-600">Sesiones Próximas</p>
+                <p className="text-sm text-slate-600">Sesiones Restantes</p>
               </div>
             </div>
           </CardContent>
@@ -266,7 +261,6 @@ export default function ClientCoachesPage() {
               </p>
               <Link href="/marketplace">
                 <Button>
-                  <Search className="h-4 w-4 mr-2" />
                   Explorar Marketplace
                 </Button>
               </Link>
@@ -275,36 +269,31 @@ export default function ClientCoachesPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {coaches.map((coach) => (
-            <Card key={coach.id} className="overflow-hidden">
+          {coaches.map((relation) => (
+            <Card key={relation.id} className="overflow-hidden">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16 border-2 border-white shadow-md">
-                      <AvatarImage src={coach.avatar_url} />
+                      <AvatarImage src={relation.coach_avatar_url} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl">
-                        {getInitials(coach.display_name || coach.full_name)}
+                        {getInitials(relation.coach_display_name || 'C')}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <CardTitle className="text-xl">
-                        {coach.display_name || coach.full_name}
+                        {relation.coach_display_name}
                       </CardTitle>
                       <CardDescription className="flex flex-wrap gap-2 mt-2">
-                        {coach.specializations?.slice(0, 3).map((spec, idx) => (
+                        {relation.coach_specializations?.slice(0, 3).map((spec, idx) => (
                           <Badge key={idx} variant="outline" className="text-xs">
                             {spec}
                           </Badge>
                         ))}
-                        {coach.specializations && coach.specializations.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{coach.specializations.length - 3}
-                          </Badge>
-                        )}
                       </CardDescription>
                     </div>
                   </div>
-                  {getStatusBadge(coach.status)}
+                  {getStatusBadge(relation.status)}
                 </div>
               </CardHeader>
               
@@ -316,54 +305,33 @@ export default function ClientCoachesPage() {
                       <h4 className="text-sm font-semibold text-slate-700 mb-2">
                         Información del Coach
                       </h4>
-                      {coach.bio ? (
+                      {relation.coach_bio && (
                         <p className="text-sm text-slate-600 line-clamp-3">
-                          {coach.bio}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-slate-400 italic">
-                          Sin biografía disponible
+                          {relation.coach_bio}
                         </p>
                       )}
                     </div>
 
-                    {coach.years_experience && coach.years_experience > 0 && (
+                    {relation.coach_years_experience && relation.coach_years_experience > 0 && (
                       <div className="flex items-center gap-2 text-sm text-slate-600">
                         <Award className="h-4 w-4 text-blue-500" />
-                        <span>{coach.years_experience} años de experiencia</span>
+                        <span>{relation.coach_years_experience} años de experiencia</span>
                       </div>
                     )}
 
-                    {/* Contact Info */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Mail className="h-4 w-4 flex-shrink-0" />
-                        <a 
-                          href={`mailto:${coach.email}`}
-                          className="hover:text-blue-600 truncate"
-                        >
-                          {coach.email}
-                        </a>
+                    {relation.coaching_focus && (
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xs font-semibold text-blue-700 mb-1">Enfoque de Coaching:</p>
+                        <p className="text-sm text-slate-700">{relation.coaching_focus}</p>
                       </div>
-                      
-                      {coach.phone && (
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <Phone className="h-4 w-4 flex-shrink-0" />
-                          <a 
-                            href={`tel:${coach.phone}`}
-                            className="hover:text-blue-600"
-                          >
-                            {coach.phone}
-                          </a>
-                        </div>
-                      )}
-                    </div>
+                    )}
 
                     <div className="flex gap-2">
-                      {coach.linkedin_url && (
+                      {relation.coach_linkedin_url && (
                         <Link 
-                          href={coach.linkedin_url} 
+                          href={relation.coach_linkedin_url} 
                           target="_blank"
+                          className="text-blue-600 hover:text-blue-700"
                         >
                           <Button variant="outline" size="sm">
                             <Linkedin className="h-4 w-4 mr-2" />
@@ -371,14 +339,6 @@ export default function ClientCoachesPage() {
                           </Button>
                         </Link>
                       )}
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => window.location.href = `mailto:${coach.email}`}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Contactar
-                      </Button>
                     </div>
                   </div>
 
@@ -392,37 +352,38 @@ export default function ClientCoachesPage() {
                       <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
                         <span className="text-sm text-slate-600">Inicio de Coaching:</span>
                         <span className="text-sm font-semibold text-slate-900">
-                          {format(new Date(coach.start_date), "d 'de' MMMM, yyyy", { locale: es })}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                        <span className="text-sm text-slate-600">Sesiones Completadas:</span>
-                        <span className="text-sm font-semibold text-green-600">
-                          {coach.completed_sessions || 0}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                        <span className="text-sm text-slate-600">Sesiones Próximas:</span>
-                        <span className="text-sm font-semibold text-blue-600">
-                          {coach.upcoming_sessions || 0}
+                          {format(new Date(relation.start_date), "d 'de' MMMM, yyyy", { locale: es })}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                        <span className="text-sm text-slate-600">Total de Sesiones:</span>
-                        <span className="text-sm font-semibold text-slate-900">
-                          {coach.total_sessions || 0}
+                        <span className="text-sm text-slate-600">Sesiones Completadas:</span>
+                        <span className="text-sm font-semibold text-green-600">
+                          {relation.sessions_completed || 0}
                         </span>
                       </div>
+
+                      <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                        <span className="text-sm text-slate-600">Sesiones Restantes:</span>
+                        <span className="text-sm font-semibold text-blue-600">
+                          {relation.sessions_remaining || 0}
+                        </span>
+                      </div>
+
+                      {relation.total_sessions_purchased > 0 && (
+                        <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                          <span className="text-sm text-slate-600">Total Contratadas:</span>
+                          <span className="text-sm font-semibold text-slate-900">
+                            {relation.total_sessions_purchased}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    {coach.status === 'active' && (
-                      <Link href="/client-dashboard/sessions">
-                        <Button className="w-full">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Ver Sesiones
+                    {relation.status === 'active' && (
+                      <Link href={`/marketplace/coaches/${relation.coach_id}`}>
+                        <Button className="w-full" variant="outline">
+                          Ver Perfil Completo
                         </Button>
                       </Link>
                     )}
@@ -432,28 +393,6 @@ export default function ClientCoachesPage() {
             </Card>
           ))}
         </div>
-      )}
-
-      {/* CTA Section */}
-      {coaches.length > 0 && (
-        <Card className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 border-none">
-          <CardContent className="py-12">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">
-                ¿Buscas más coaches?
-              </h3>
-              <p className="text-slate-600 mb-6 max-w-md mx-auto">
-                Explora nuestro marketplace y encuentra más profesionales especializados
-              </p>
-              <Link href="/marketplace">
-                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  <Search className="w-5 h-5 mr-2" />
-                  Explorar Marketplace
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
       )}
     </div>
   )

@@ -23,21 +23,13 @@ import {
   Lightbulb,
   MessageSquare,
   Star,
-  Save,
-  Circle,
-  CheckCircle
+  Save
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+// ❌ ELIMINADO: import ClientNavbar from '@/components/navigation/ClientNavbar'
 import { useToast } from '@/hooks/use-toast'
-
-// ✅ TIPOS CORREGIDOS
-interface ActionItem {
-  item: string
-  status: string
-  dueDate: string
-}
 
 interface Session {
   id: string
@@ -52,7 +44,7 @@ interface Session {
   session_focus: string[]
   techniques_used: string[]
   insights: string[]
-  homework_assigned: ActionItem[]  // ✅ CORREGIDO: Array de objetos
+  homework_assigned: string[]
   client_notes: string
   client_commitments: string[]
   client_action_items: string[]
@@ -78,6 +70,7 @@ export default function SessionDetailPage() {
   const [coachProfile, setCoachProfile] = useState<CoachProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  // ❌ ELIMINADO: const [userData, setUserData] = useState<any>(null)
   
   // Editable fields
   const [clientNotes, setClientNotes] = useState('')
@@ -99,6 +92,14 @@ export default function SessionDetailPage() {
         router.push('/login')
         return
       }
+
+      // ❌ ELIMINADO: setUserData
+      // const { data: profile } = await supabase
+      //   .from('users')
+      //   .select('*')
+      //   .eq('id', user.id)
+      //   .single()
+      // setUserData(profile)
 
       // Obtener client_id
       const { data: clientRecord } = await supabase
@@ -232,26 +233,9 @@ export default function SessionDetailPage() {
       .slice(0, 2)
   }
 
-  // ✅ NUEVO: Helper para mostrar el estado de las tareas
-  const getTaskStatusIcon = (status: string) => {
-    if (status === 'completed') {
-      return <CheckCircle className="h-5 w-5 text-green-600" />
-    }
-    return <Circle className="h-5 w-5 text-slate-400" />
-  }
-
-  const getTaskStatusBadge = (status: string) => {
-    const config = {
-      pending: { label: 'Pendiente', className: 'bg-yellow-100 text-yellow-700' },
-      'in-progress': { label: 'En Progreso', className: 'bg-blue-100 text-blue-700' },
-      completed: { label: 'Completada', className: 'bg-green-100 text-green-700' }
-    }
-    const { label, className } = config[status as keyof typeof config] || config.pending
-    return <Badge variant="outline" className={className}>{label}</Badge>
-  }
-
   if (isLoading) {
     return (
+      // ❌ ELIMINADO: <ClientNavbar user={userData} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Skeleton className="h-12 w-64 mb-8" />
         <div className="space-y-6">
@@ -264,13 +248,23 @@ export default function SessionDetailPage() {
 
   if (!session) {
     return (
+      // ❌ ELIMINADO: <ClientNavbar user={userData} />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
-              <p className="text-slate-600 mb-4">Sesión no encontrada</p>
+              <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">
+                Sesión no encontrada
+              </h3>
+              <p className="text-slate-600 mb-6">
+                No tienes acceso a esta sesión o no existe
+              </p>
               <Link href="/client-dashboard/sessions">
-                <Button>Volver a Sesiones</Button>
+                <Button>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Volver a Mis Sesiones
+                </Button>
               </Link>
             </div>
           </CardContent>
@@ -280,9 +274,11 @@ export default function SessionDetailPage() {
   }
 
   return (
+    // ❌ ELIMINADO: <div className="min-h-screen bg-slate-50">
+    //   <ClientNavbar user={userData} />
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <Link href="/client-dashboard/sessions">
           <Button variant="ghost" className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -298,21 +294,23 @@ export default function SessionDetailPage() {
             <div className="flex items-center gap-4 text-slate-600">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                <span>
-                  {format(new Date(session.scheduled_date), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })}
-                </span>
+                {format(new Date(session.scheduled_date), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
               </div>
-              {getStatusBadge(session.status)}
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                {format(new Date(session.scheduled_date), 'HH:mm')} ({session.duration} min)
+              </div>
             </div>
           </div>
+          {getStatusBadge(session.status)}
         </div>
       </div>
 
-      {/* Two Column Layout */}
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Session Info */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Session Info Card */}
+          {/* Coach Info */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -443,7 +441,7 @@ export default function SessionDetailPage() {
             </Card>
           )}
 
-          {/* ✅ HOMEWORK CORREGIDO */}
+          {/* Homework */}
           {session.homework_assigned && session.homework_assigned.length > 0 && (
             <Card>
               <CardHeader>
@@ -451,31 +449,13 @@ export default function SessionDetailPage() {
                   <Target className="h-5 w-5" />
                   Tareas Asignadas
                 </CardTitle>
-                <CardDescription>
-                  Acciones para completar antes de la próxima sesión
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-3">
-                  {session.homework_assigned.map((task, idx) => (
-                    <li key={idx} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <div className="mt-0.5">
-                        {getTaskStatusIcon(task.status)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-slate-900 font-medium mb-1">
-                          {task.item}
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {getTaskStatusBadge(task.status)}
-                          {task.dueDate && (
-                            <div className="flex items-center gap-1 text-xs text-slate-500">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(task.dueDate), "d 'de' MMM", { locale: es })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                <ul className="space-y-2">
+                  {session.homework_assigned.map((hw, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <FileText className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-slate-700">{hw}</span>
                     </li>
                   ))}
                 </ul>
@@ -577,5 +557,6 @@ export default function SessionDetailPage() {
         </div>
       </div>
     </div>
+    // ❌ ELIMINADO: </div> del wrapper min-h-screen
   )
 }

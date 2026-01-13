@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2, User, CreditCard } from 'lucide-react'
+import { Loader2, User, CreditCard, Mail, HelpCircle, MessageSquare } from 'lucide-react'
 import SubscriptionManagement from '@/components/subscription/SubscriptionManagement'
 
 export default function SettingsPage() {
@@ -118,6 +119,21 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // ✅ FUNCIÓN PARA CONTACTAR SOPORTE
+  function handleContactSupport() {
+    const supportEmail = 'info@athernus.com'
+    const subject = encodeURIComponent('Solicitud de Soporte - CoachLatam')
+    const body = encodeURIComponent(`
+Nombre: ${fullName || 'No disponible'}
+Email: ${email || 'No disponible'}
+
+Describe tu consulta aquí:
+
+
+`)
+    window.location.href = `mailto:${supportEmail}?subject=${subject}&body=${body}`
   }
 
   if (loading) {
@@ -246,6 +262,56 @@ export default function SettingsPage() {
           
           <SubscriptionManagement />
         </div>
+
+        {/* ✅ SEPARATOR */}
+        <Separator className="my-8" />
+
+        {/* ✅ SECCIÓN DE SOPORTE */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5" />
+              Soporte
+            </CardTitle>
+            <CardDescription>
+              ¿Necesitas ayuda? Contáctanos y te responderemos a la brevedad
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-slate-900 mb-1">
+                  Equipo de Soporte Athernus
+                </h4>
+                <p className="text-sm text-slate-600 mb-3">
+                  Nuestro equipo está disponible para ayudarte con cualquier consulta o problema que tengas.
+                </p>
+                <div className="flex items-center gap-2 text-sm text-slate-700">
+                  <Mail className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium">info@athernus.com</span>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleContactSupport}
+              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              size="lg"
+            >
+              <Mail className="h-5 w-5 mr-2" />
+              Contactar Soporte
+            </Button>
+
+            <div className="pt-4 border-t border-slate-200">
+              <p className="text-xs text-slate-500 text-center">
+                Tiempo de respuesta estimado: 24-48 horas
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   )

@@ -73,16 +73,23 @@ export default function LoginPage() {
         })
 
         await new Promise(resolve => setTimeout(resolve, 100))
-        
-        const isClient =
-          userProfile?.user_type === 'client' ||
-          userProfile?.role === 'client'
+const isClient =
+  userProfile?.user_type === 'client' ||
+  userProfile?.role === 'client'
 
-        if (isClient) {
-          window.location.href = '/client-dashboard'
-        } else {
-          window.location.href = '/dashboard'
-        }
+if (isClient) {
+  window.location.href = '/client-dashboard'
+} else {
+  window.location.href = '/dashboard'
+}
+        // ✅ NUEVO: Redirigir según el tipo de usuario
+        //if (userProfile?.user_type === 'client') {
+        //  console.log('Redirecting to client dashboard...')
+        //  window.location.href = '/client-dashboard'
+        //} else {
+        //  console.log('Redirecting to coach dashboard...')
+        //  window.location.href = '/dashboard'
+        //}
       } else {
         console.log('No session in response')
         setIsLoading(false)
@@ -141,19 +148,8 @@ export default function LoginPage() {
                   disabled={isLoading}
                 />
               </div>
-              
-              {/* ⭐ CAMPO DE CONTRASEÑA CON LINK DE FORGOT PASSWORD */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Contraseña</Label>
-                  <Link 
-                    href="/forgot-password" 
-                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors"
-                    tabIndex={-1}
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </Link>
-                </div>
+                <Label htmlFor="password">Contraseña</Label>
                 <Input
                   id="password"
                   type="password"

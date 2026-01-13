@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,10 +12,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { LogOut, Home, Settings, ChevronDown, Sparkles } from 'lucide-react'
+import { LogOut, Home, Settings, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-
+import Image from 'next/image'
+import { Loader2, Sparkles } from 'lucide-react'
 interface MarketplaceNavbarProps {
   title?: string
 }
@@ -41,17 +42,13 @@ export function MarketplaceNavbar({ title = 'Marketplace' }: MarketplaceNavbarPr
       if (authUser) {
         setUser(authUser)
 
-        const { data: profile, error } = await supabase
+        const { data: profile } = await supabase
           .from('users')
           .select('*')
           .eq('id', authUser.id)
           .single()
 
-        if (error) {
-          console.error('Error loading user profile:', error)
-        } else {
-          setUserProfile(profile)
-        }
+        setUserProfile(profile)
       }
     } catch (error) {
       console.error('Error loading user:', error)
@@ -66,30 +63,23 @@ export function MarketplaceNavbar({ title = 'Marketplace' }: MarketplaceNavbarPr
     router.refresh()
   }
 
-  const isClient = useMemo(() => {
-    const role = (userProfile?.role || '').toString().toLowerCase()
-    const userType = (userProfile?.user_type || '').toString().toLowerCase()
-    return userType === 'client' || role === 'client' || role === 'cliente'
-  }, [userProfile])
-
   const getInitials = (name: string) => {
-    if (!name) return 'U'
     return name
       .split(' ')
-      .filter(Boolean)
       .map((n) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2)
   }
 
+  const getDashboardLink = () => {
+    if (userProfile?.user_type === 'client') return '/client-dashboard'
+    return '/dashboard'
+  }
+
   const getUserDisplayName = () => {
     return userProfile?.full_name || user?.email?.split('@')[0] || 'Usuario'
   }
-
-  const dashboardHref = isClient ? '/client-dashboard' : '/dashboard'
-  const settingsHref = isClient ? '/client-dashboard/settings' : '/settings'
-  const roleLabel = isClient ? 'Cliente' : 'Coach'
 
   return (
     <div className="bg-white border-b border-slate-200 sticky top-0 z-50">
@@ -97,25 +87,27 @@ export function MarketplaceNavbar({ title = 'Marketplace' }: MarketplaceNavbarPr
         <div className="flex items-center justify-between h-16">
           {/* Logo/Brand */}
           <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center space-x-2.5 group">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-brand-blue-500 to-brand-cyan-500 rounded-xl blur-sm opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
-                <div className="relative bg-gradient-to-br from-brand-blue-500 to-brand-cyan-500 p-2.5 rounded-xl shadow-brand-blue">
-                  <Sparkles className="h-8 w-8 text-white" strokeWidth={2.5} />
-                </div>
+          <Link href="/" className="inline-flex items-center space-x-2.5 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-blue-500 to-brand-cyan-500 rounded-xl blur-sm opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+              <div className="relative bg-gradient-to-br from-brand-blue-500 to-brand-cyan-500 p-2.5 rounded-xl shadow-brand-blue">
+                <Sparkles className="h-8 w-8 text-white" strokeWidth={2.5} />
               </div>
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-3xl font-bold bg-gradient-to-r from-brand-blue-600 to-brand-cyan-600 bg-clip-text text-transparent">
+                CoachLatam
+              </span>
+              <span className="text-[10px] text-brand-blue-500/70 font-medium tracking-widest uppercase">
+                Athernus Powered Coaching
+              </span>
+            </div>
+          </Link>
 
-              <div className="flex flex-col items-start">
-                <span className="text-3xl font-bold bg-gradient-to-r from-brand-blue-600 to-brand-cyan-600 bg-clip-text text-transparent">
-                  CoachLatam
-                </span>
-                <span className="text-[10px] text-brand-blue-500/70 font-medium tracking-widest uppercase">
-                  Athernus Powered Coaching
-                </span>
-              </div>
-            </Link>
+            {title ? (
+              <span className="hidden sm:inline text-slate-400">|</span>
+            ) : null}
 
-            {title ? <span className="hidden sm:inline text-slate-400">|</span> : null}
             {title ? <span className="hidden sm:inline text-slate-700">{title}</span> : null}
           </div>
 
@@ -135,7 +127,9 @@ export function MarketplaceNavbar({ title = 'Marketplace' }: MarketplaceNavbarPr
 
                   <div className="hidden lg:flex flex-col items-start">
                     <span className="text-sm font-medium text-slate-900">{getUserDisplayName()}</span>
-                    <span className="text-xs text-slate-500">{roleLabel}</span>
+                    <span className="text-xs text-slate-500">
+                      {userProfile?.user_type === 'client' ? 'Cliente' : 'Coach'}
+                    </span>
                   </div>
 
                   <ChevronDown className="h-4 w-4 text-slate-500" />
@@ -153,14 +147,14 @@ export function MarketplaceNavbar({ title = 'Marketplace' }: MarketplaceNavbarPr
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem asChild>
-                  <Link href={dashboardHref} className="cursor-pointer">
+                  <Link href={getDashboardLink()} className="cursor-pointer">
                     <Home className="mr-2 h-4 w-4" />
                     Mi Dashboard
                   </Link>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem asChild>
-                  <Link href={settingsHref} className="cursor-pointer">
+                  <Link href="/settings" className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
                     Configuración
                   </Link>

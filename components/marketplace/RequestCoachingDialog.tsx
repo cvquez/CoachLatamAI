@@ -32,6 +32,7 @@ interface RequestCoachingDialogProps {
 }
 
 const COACHING_AREAS = [
+  "Athernus",
   "Executive Coaching",
   "Life Coaching",
   "Career Coaching",
