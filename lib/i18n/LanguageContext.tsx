@@ -194,8 +194,7 @@ const translations: Record<Language, Record<string, string>> = {
     'spec.relationship': 'Relationship Coaching',
     'spec.financial': 'Financial Coaching',
     'spec.performance': 'Performance Coaching',
-    'spec.athernus': 'Athernus',
-    
+     
     // Idiomas
     'lang.english': 'English',
     'lang.spanish': 'Spanish',
