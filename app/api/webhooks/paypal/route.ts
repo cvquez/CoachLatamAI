@@ -8,27 +8,140 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Verificar webhook de PayPal
-function verifyPayPalWebhook(
+// Verificar webhook de PayPal usando el SDK oficial
+async function verifyPayPalWebhook(
   headers: Headers,
   body: string,
   webhookId: string
-): boolean {
-  // Implementar verificación de firma de PayPal
-  // Por ahora, retornar true para desarrollo
-  // En producción, verificar la firma usando el SDK de PayPal
-  return true
+): Promise<boolean> {
+  // En desarrollo, permitir bypass si está configurado
+  if (process.env.NODE_ENV === 'development' && process.env.PAYPAL_WEBHOOK_BYPASS === 'true') {
+    console.warn('⚠️ WEBHOOK VERIFICATION BYPASSED - DEVELOPMENT MODE ONLY')
+    return true
+  }
+
+  try {
+    const transmissionId = headers.get('paypal-transmission-id')
+    const transmissionTime = headers.get('paypal-transmission-time')
+    const transmissionSig = headers.get('paypal-transmission-sig')
+    const certUrl = headers.get('paypal-cert-url')
+    const authAlgo = headers.get('paypal-auth-algo')
+
+    // Validar que todos los headers necesarios estén presentes
+    if (!transmissionId || !transmissionTime || !transmissionSig || !certUrl || !authAlgo) {
+      console.error('❌ Missing PayPal webhook headers')
+      return false
+    }
+
+    // Validar que la URL del certificado sea de PayPal
+    if (!certUrl.startsWith('https://api.paypal.com/') && !certUrl.startsWith('https://api-m.paypal.com/')) {
+      console.error('❌ Invalid PayPal certificate URL')
+      return false
+    }
+
+    // Construir el mensaje esperado para verificación
+    const expectedMessage = `${transmissionId}|${transmissionTime}|${webhookId}|${crypto.createHash('sha256').update(body).digest('hex')}`
+
+    // Verificar usando el API de PayPal
+    const verificationResponse = await fetch(`${process.env.PAYPAL_API_BASE}/v1/notifications/verify-webhook-signature`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await getPayPalAccessToken()}`,
+      },
+      body: JSON.stringify({
+        transmission_id: transmissionId,
+        transmission_time: transmissionTime,
+        cert_url: certUrl,
+        auth_algo: authAlgo,
+        transmission_sig: transmissionSig,
+        webhook_id: webhookId,
+        webhook_event: JSON.parse(body),
+      }),
+    })
+
+    const verificationResult = await verificationResponse.json()
+
+    if (verificationResult.verification_status === 'SUCCESS') {
+      console.log('✅ PayPal webhook signature verified')
+      return true
+    } else {
+      console.error('❌ PayPal webhook signature verification failed:', verificationResult)
+      return false
+    }
+  } catch (error) {
+    console.error('❌ Error verifying PayPal webhook:', error)
+    return false
+  }
+}
+
+// Obtener access token de PayPal (cachear por 1 hora)
+let cachedAccessToken: { token: string; expiresAt: number } | null = null
+
+async function getPayPalAccessToken(): Promise<string> {
+  // Si tenemos un token en cache y no ha expirado, usarlo
+  if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now()) {
+    return cachedAccessToken.token
+  }
+
+  try {
+    const auth = Buffer.from(
+      `${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
+    ).toString('base64')
+
+    const response = await fetch(`${process.env.PAYPAL_API_BASE}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${auth}`,
+      },
+      body: 'grant_type=client_credentials',
+    })
+
+    const data = await response.json()
+
+    if (data.access_token) {
+      // Cachear el token (expira en 1 hora típicamente)
+      cachedAccessToken = {
+        token: data.access_token,
+        expiresAt: Date.now() + (data.expires_in - 60) * 1000, // Restar 1 minuto por seguridad
+      }
+      return data.access_token
+    } else {
+      throw new Error('Failed to get PayPal access token')
+    }
+  } catch (error) {
+    console.error('❌ Error getting PayPal access token:', error)
+    throw error
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Validar que las variables de entorno necesarias estén configuradas
+    if (!process.env.PAYPAL_WEBHOOK_ID) {
+      console.error('❌ PAYPAL_WEBHOOK_ID not configured')
+      return NextResponse.json(
+        { error: 'Webhook not configured' },
+        { status: 500 }
+      )
+    }
+
+    if (!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) {
+      console.error('❌ PayPal credentials not configured')
+      return NextResponse.json(
+        { error: 'PayPal credentials not configured' },
+        { status: 500 }
+      )
+    }
+
     const body = await request.text()
     const event = JSON.parse(body)
 
     console.log('📨 PayPal Webhook Event:', event.event_type)
 
     // Verificar webhook (IMPORTANTE en producción)
-    const isValid = verifyPayPalWebhook(
+    const isValid = await verifyPayPalWebhook(
       request.headers,
       body,
       process.env.PAYPAL_WEBHOOK_ID!
@@ -57,27 +170,24 @@ export async function POST(request: NextRequest) {
       case 'BILLING.SUBSCRIPTION.ACTIVATED':
         // Suscripción activada (primer pago exitoso)
         console.log('✅ Subscription activated:', subscriptionId)
-        
-        const { data: subscription } = await supabase
-          .from('subscriptions')
-          .select('user_id')
-          .eq('paypal_subscription_id', subscriptionId)
-          .single()
 
-        if (subscription) {
-          await supabase
-            .from('subscriptions')
-            .update({
-              status: 'active',
-              start_date: new Date().toISOString(),
-            })
-            .eq('paypal_subscription_id', subscriptionId)
+        const { data: activatedResult, error: activatedError } = await supabase.rpc(
+          'update_subscription_status_webhook',
+          {
+            p_paypal_subscription_id: subscriptionId,
+            p_status: 'active',
+          }
+        )
 
-          await supabase
-            .from('users')
-            .update({ subscription_status: 'active' })
-            .eq('id', subscription.user_id)
+        if (activatedError) {
+          console.error('❌ Error updating activated subscription:', activatedError)
+          return NextResponse.json(
+            { error: 'Failed to update subscription' },
+            { status: 500 }
+          )
         }
+
+        console.log('✅ Subscription activated successfully:', activatedResult)
         break
 
       case 'BILLING.SUBSCRIPTION.UPDATED':
@@ -88,89 +198,98 @@ export async function POST(request: NextRequest) {
       case 'BILLING.SUBSCRIPTION.CANCELLED':
         // Suscripción cancelada por el usuario
         console.log('❌ Subscription cancelled:', subscriptionId)
-        
-        const { data: cancelledSub } = await supabase
-          .from('subscriptions')
-          .select('user_id')
-          .eq('paypal_subscription_id', subscriptionId)
-          .single()
 
-        if (cancelledSub) {
-          await supabase
-            .from('subscriptions')
-            .update({
-              status: 'cancelled',
-              cancelled_at: new Date().toISOString(),
-            })
-            .eq('paypal_subscription_id', subscriptionId)
+        const { data: cancelledResult, error: cancelledError } = await supabase.rpc(
+          'update_subscription_status_webhook',
+          {
+            p_paypal_subscription_id: subscriptionId,
+            p_status: 'cancelled',
+          }
+        )
 
-          await supabase
-            .from('users')
-            .update({ subscription_status: 'cancelled' })
-            .eq('id', cancelledSub.user_id)
+        if (cancelledError) {
+          console.error('❌ Error updating cancelled subscription:', cancelledError)
+          return NextResponse.json(
+            { error: 'Failed to update subscription' },
+            { status: 500 }
+          )
         }
+
+        console.log('✅ Subscription cancelled successfully:', cancelledResult)
         break
 
       case 'BILLING.SUBSCRIPTION.SUSPENDED':
         // Suscripción suspendida (falta de pago)
         console.log('⚠️ Subscription suspended:', subscriptionId)
-        
-        const { data: suspendedSub } = await supabase
-          .from('subscriptions')
-          .select('user_id')
-          .eq('paypal_subscription_id', subscriptionId)
-          .single()
 
-        if (suspendedSub) {
-          await supabase
-            .from('subscriptions')
-            .update({ status: 'suspended' })
-            .eq('paypal_subscription_id', subscriptionId)
+        const { data: suspendedResult, error: suspendedError } = await supabase.rpc(
+          'update_subscription_status_webhook',
+          {
+            p_paypal_subscription_id: subscriptionId,
+            p_status: 'suspended',
+          }
+        )
 
-          await supabase
-            .from('users')
-            .update({ subscription_status: 'suspended' })
-            .eq('id', suspendedSub.user_id)
+        if (suspendedError) {
+          console.error('❌ Error updating suspended subscription:', suspendedError)
+          return NextResponse.json(
+            { error: 'Failed to update subscription' },
+            { status: 500 }
+          )
         }
+
+        console.log('✅ Subscription suspended successfully:', suspendedResult)
         break
 
       case 'BILLING.SUBSCRIPTION.EXPIRED':
         // Suscripción expirada
         console.log('⏰ Subscription expired:', subscriptionId)
-        
-        const { data: expiredSub } = await supabase
-          .from('subscriptions')
-          .select('user_id')
-          .eq('paypal_subscription_id', subscriptionId)
-          .single()
 
-        if (expiredSub) {
-          await supabase
-            .from('subscriptions')
-            .update({ status: 'expired' })
-            .eq('paypal_subscription_id', subscriptionId)
+        const { data: expiredResult, error: expiredError } = await supabase.rpc(
+          'update_subscription_status_webhook',
+          {
+            p_paypal_subscription_id: subscriptionId,
+            p_status: 'expired',
+          }
+        )
 
-          await supabase
-            .from('users')
-            .update({ subscription_status: 'expired' })
-            .eq('id', expiredSub.user_id)
+        if (expiredError) {
+          console.error('❌ Error updating expired subscription:', expiredError)
+          return NextResponse.json(
+            { error: 'Failed to update subscription' },
+            { status: 500 }
+          )
         }
+
+        console.log('✅ Subscription expired successfully:', expiredResult)
         break
 
       case 'PAYMENT.SALE.COMPLETED':
         // Pago completado
         console.log('💰 Payment completed for subscription:', subscriptionId)
-        
-        // Actualizar next_billing_date
+
+        // Calcular próxima fecha de cobro (1 mes adelante)
         const nextBillingDate = new Date()
         nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
-        
-        await supabase
-          .from('subscriptions')
-          .update({
-            next_billing_date: nextBillingDate.toISOString(),
-          })
-          .eq('paypal_subscription_id', subscriptionId)
+
+        const { data: paymentResult, error: paymentError } = await supabase.rpc(
+          'update_subscription_status_webhook',
+          {
+            p_paypal_subscription_id: subscriptionId,
+            p_status: 'active', // Confirmar que está activa
+            p_next_billing_date: nextBillingDate.toISOString(),
+          }
+        )
+
+        if (paymentError) {
+          console.error('❌ Error updating subscription after payment:', paymentError)
+          return NextResponse.json(
+            { error: 'Failed to update subscription' },
+            { status: 500 }
+          )
+        }
+
+        console.log('✅ Payment processed successfully:', paymentResult)
         break
 
       default:

@@ -141,37 +141,95 @@ export async function POST(request: NextRequest) {
 
     console.log('📋 Found subscription:', subscription.paypal_subscription_id)
 
-    // Cancelar en PayPal
+    // PASO 1: Cancelar en PayPal primero
     console.log('🔄 Cancelling subscription in PayPal...')
-    await cancelPayPalSubscription(
-      subscription.paypal_subscription_id,
-      reason || 'User requested cancellation'
-    )
+    let paypalCancelled = false
 
-    console.log('✅ PayPal cancellation successful')
+    try {
+      await cancelPayPalSubscription(
+        subscription.paypal_subscription_id,
+        reason || 'User requested cancellation'
+      )
+      paypalCancelled = true
+      console.log('✅ PayPal cancellation successful')
+    } catch (paypalError: any) {
+      console.error('❌ PayPal cancellation failed:', paypalError)
 
-    // Usar Service Role para actualizar (bypass RLS)
-    const supabaseAdmin = getSupabaseAdmin()
-    
-    const { error: updateError } = await supabaseAdmin
-      .from('subscriptions')
-      .update({
-        status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-      })
-      .eq('id', subscription.id)
-
-    if (updateError) {
-      console.error('❌ Error updating subscription:', updateError)
-      throw updateError
+      // Si PayPal falla, no actualizar la BD
+      return NextResponse.json(
+        {
+          error: 'Failed to cancel subscription in PayPal',
+          details: paypalError.message,
+        },
+        { status: 500 }
+      )
     }
 
-    console.log('✅ Database updated successfully')
+    // PASO 2: Actualizar en la base de datos usando función RPC atómica
+    console.log('🔄 Updating database...')
 
-    return NextResponse.json({
-      success: true,
-      message: 'Subscription cancelled successfully',
-    })
+    try {
+      // Usar Service Role para ejecutar la función RPC
+      const supabaseAdmin = getSupabaseAdmin()
+
+      const { data: cancelResult, error: cancelError } = await supabaseAdmin.rpc(
+        'cancel_subscription_atomic',
+        {
+          p_user_id: user.id,
+          p_paypal_subscription_id: subscription.paypal_subscription_id,
+          p_reason: reason || 'User requested cancellation',
+        }
+      )
+
+      if (cancelError) {
+        console.error('❌ Database update failed:', cancelError)
+
+        // ROLLBACK: Intentar reactivar la suscripción en PayPal
+        console.log('🔄 Attempting rollback: reactivating PayPal subscription...')
+        try {
+          const accessToken = await getPayPalAccessToken()
+          await fetch(
+            `${process.env.PAYPAL_API_BASE}/v1/billing/subscriptions/${subscription.paypal_subscription_id}/activate`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                reason: 'Database error - rollback cancellation',
+              }),
+            }
+          )
+          console.log('✅ Rollback successful: subscription reactivated in PayPal')
+        } catch (rollbackError) {
+          console.error('❌ CRITICAL: Rollback failed:', rollbackError)
+          // Este es un estado crítico: PayPal cancelado pero BD no actualizada
+          // Requiere intervención manual
+        }
+
+        throw cancelError
+      }
+
+      console.log('✅ Database updated successfully:', cancelResult)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Subscription cancelled successfully',
+        data: cancelResult,
+      })
+    } catch (dbError: any) {
+      console.error('❌ Error in database operation:', dbError)
+
+      return NextResponse.json(
+        {
+          error: 'Database update failed after PayPal cancellation',
+          details: dbError.message,
+          critical: true, // Indica que requiere atención
+        },
+        { status: 500 }
+      )
+    }
   } catch (error: any) {
     console.error('❌ Error cancelling subscription:', error)
     return NextResponse.json(

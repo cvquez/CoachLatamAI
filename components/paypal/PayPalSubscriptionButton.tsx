@@ -24,49 +24,65 @@ export default function PayPalSubscriptionButton({ userId, planId }: PayPalSubsc
     console.log('✅ Subscription approved:', data)
 
     try {
-      // Guardar suscripción en la base de datos
-      const { error } = await supabase
-        .from('subscriptions')
-        .insert({
-          user_id: userId,
-          paypal_subscription_id: data.subscriptionID,
-          paypal_plan_id: planId,
-          status: 'active',
-          start_date: new Date().toISOString(),
-        })
+      // Usar función RPC para crear suscripción de manera atómica
+      // Esto garantiza que tanto la suscripción como el estado del usuario
+      // se actualizan en una sola transacción, evitando race conditions
+      const { data: result, error } = await supabase.rpc('create_subscription_atomic', {
+        p_user_id: userId,
+        p_paypal_subscription_id: data.subscriptionID,
+        p_paypal_plan_id: planId,
+      })
 
       if (error) {
-        console.error('Error saving subscription:', error)
+        console.error('Error creating subscription:', error)
+
+        // Intentar cancelar la suscripción en PayPal si la BD falló
+        try {
+          await fetch('/api/subscription/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscriptionId: data.subscriptionID,
+              reason: 'Database error during activation - rollback',
+            }),
+          })
+          console.log('🔄 Subscription rolled back in PayPal')
+        } catch (cancelError) {
+          console.error('❌ Failed to rollback PayPal subscription:', cancelError)
+        }
+
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'No se pudo guardar la suscripción. Contacta soporte.',
+          description: `No se pudo activar la suscripción. Contacta soporte con el ID: ${data.subscriptionID}`,
         })
         return
       }
 
-      // Actualizar estado del usuario
-      await supabase
-        .from('users')
-        .update({ subscription_status: 'active' })
-        .eq('id', userId)
+      // Verificar resultado
+      if (!result?.success) {
+        throw new Error(result?.message || 'Error desconocido al crear suscripción')
+      }
+
+      console.log('✅ Subscription created successfully:', result)
 
       toast({
         title: '¡Suscripción Activada!',
         description: 'Tu suscripción se ha activado correctamente.',
       })
 
-      // Redirigir al dashboard
+      // Redirigir al dashboard después de un breve delay
       setTimeout(() => {
         router.push('/dashboard')
       }, 1500)
 
     } catch (error) {
-      console.error('Error processing subscription:', error)
+      console.error('Exception processing subscription:', error)
+
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Ocurrió un error al procesar tu suscripción.',
+        description: error instanceof Error ? error.message : 'Ocurrió un error al procesar tu suscripción.',
       })
     } finally {
       setIsLoading(false)
