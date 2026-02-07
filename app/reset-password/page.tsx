@@ -1,5 +1,6 @@
 'use client'
 
+import { z } from 'zod'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -30,7 +31,7 @@ export default function ResetPasswordPage() {
   async function checkResetToken() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (session) {
         setIsValidToken(true)
       } else {
@@ -57,29 +58,25 @@ export default function ResetPasswordPage() {
     e.preventDefault()
 
     // Validaciones
-    if (!password || !confirmPassword) {
-      toast({
-        variant: 'destructive',
-        title: 'Campos requeridos',
-        description: 'Por favor completa ambos campos',
-      })
-      return
-    }
+    // Validaciones con Zod
+    const passwordSchema = z.object({
+      password: z.string()
+        .min(8, 'La contraseña debe tener al menos 8 caracteres')
+        .regex(/[0-9]/, 'La contraseña debe contener al menos un número')
+        .regex(/[^a-zA-Z0-9]/, 'La contraseña debe contener al menos un símbolo'),
+      confirmPassword: z.string()
+    }).refine((data) => data.password === data.confirmPassword, {
+      message: "Las contraseñas no coinciden",
+      path: ["confirmPassword"],
+    })
 
-    if (password.length < 6) {
-      toast({
-        variant: 'destructive',
-        title: 'Contraseña muy corta',
-        description: 'La contraseña debe tener al menos 6 caracteres',
-      })
-      return
-    }
+    const result = passwordSchema.safeParse({ password, confirmPassword })
 
-    if (password !== confirmPassword) {
+    if (!result.success) {
       toast({
         variant: 'destructive',
-        title: 'Las contraseñas no coinciden',
-        description: 'Por favor verifica que ambas contraseñas sean iguales',
+        title: 'Error de validación',
+        description: result.error.errors[0].message,
       })
       return
     }
@@ -233,15 +230,15 @@ export default function ResetPasswordPage() {
             {password && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs">
-                  <div className={`w-2 h-2 rounded-full ${password.length >= 6 ? 'bg-green-500' : 'bg-slate-600'}`} />
-                  <span className={password.length >= 6 ? 'text-green-400' : 'text-slate-500'}>
-                    Al menos 6 caracteres
+                  <div className={`w-2 h-2 rounded-full ${password.length >= 8 ? 'bg-green-500' : 'bg-slate-600'}`} />
+                  <span className={password.length >= 8 ? 'text-green-400' : 'text-slate-500'}>
+                    Al menos 8 caracteres
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <div className={`w-2 h-2 rounded-full ${password === confirmPassword && confirmPassword ? 'bg-green-500' : 'bg-slate-600'}`} />
-                  <span className={password === confirmPassword && confirmPassword ? 'text-green-400' : 'text-slate-500'}>
-                    Las contraseñas coinciden
+                  <div className={`w-2 h-2 rounded-full ${/\d/.test(password) && /[^a-zA-Z0-9]/.test(password) ? 'bg-green-500' : 'bg-slate-600'}`} />
+                  <span className={/\d/.test(password) && /[^a-zA-Z0-9]/.test(password) ? 'text-green-400' : 'text-slate-500'}>
+                    Añade números y símbolos
                   </span>
                 </div>
               </div>

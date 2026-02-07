@@ -1,5 +1,7 @@
 'use client'
 
+import { z } from 'zod'
+
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -20,11 +22,15 @@ export default function ForgotPasswordPage() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!email) {
+    // Validación con Zod
+    const emailSchema = z.string().email('Por favor ingresa un email válido')
+    const result = emailSchema.safeParse(email)
+
+    if (!result.success) {
       toast({
         variant: 'destructive',
-        title: 'Email requerido',
-        description: 'Por favor ingresa tu email',
+        title: 'Email inválido',
+        description: result.error.errors[0].message,
       })
       return
     }
@@ -34,7 +40,7 @@ export default function ForgotPasswordPage() {
     try {
       // Supabase envía el email automáticamente
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       })
 
       if (error) {
@@ -126,8 +132,8 @@ export default function ForgotPasswordPage() {
               </Button>
 
               <div className="text-center">
-                <Link 
-                  href="/login" 
+                <Link
+                  href="/login"
                   className="text-sm text-slate-400 hover:text-slate-300 inline-flex items-center gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />

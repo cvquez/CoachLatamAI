@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Check, Loader2 } from 'lucide-react'
+import CouponInput, { CouponData } from '@/components/subscription/CouponInput'
 
 interface PayPalSubscriptionButtonProps {
   userId: string
@@ -15,6 +16,7 @@ interface PayPalSubscriptionButtonProps {
 
 export default function PayPalSubscriptionButton({ userId, planId }: PayPalSubscriptionButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [coupon, setCoupon] = useState<CouponData | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
@@ -65,6 +67,16 @@ export default function PayPalSubscriptionButton({ userId, planId }: PayPalSubsc
       }
 
       console.log('✅ Subscription created successfully:', result)
+
+      if (coupon && result?.subscription_id) {
+        const { error: couponError } = await supabase.rpc('apply_coupon', {
+          p_coupon_id: coupon.coupon_id,
+          p_user_id: userId,
+          p_subscription_id: result.subscription_id,
+          p_discount_applied: coupon.discount_value
+        })
+        if (couponError) console.error('Error applying coupon:', couponError)
+      }
 
       toast({
         title: '¡Suscripción Activada!',
@@ -122,22 +134,25 @@ export default function PayPalSubscriptionButton({ userId, planId }: PayPalSubsc
         intent: 'subscription',
       }}
     >
-      <PayPalButtons
-        createSubscription={(data, actions) => {
-          return actions.subscription.create({
-            plan_id: planId,
-          })
-        }}
-        onApprove={handleApprove}
-        onError={handleError}
-        onCancel={handleCancel}
-        style={{
-          layout: 'vertical',
-          color: 'gold',
-          shape: 'rect',
-          label: 'subscribe',
-        }}
-      />
+      <div className="space-y-4">
+        <CouponInput planId={planId} onCouponApplied={setCoupon} />
+        <PayPalButtons
+          createSubscription={(data, actions) => {
+            return actions.subscription.create({
+              plan_id: planId,
+            })
+          }}
+          onApprove={handleApprove}
+          onError={handleError}
+          onCancel={handleCancel}
+          style={{
+            layout: 'vertical',
+            color: 'gold',
+            shape: 'rect',
+            label: 'subscribe',
+          }}
+        />
+      </div>
     </PayPalScriptProvider>
   )
 }

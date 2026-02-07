@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
-// Cliente Supabase con service role para bypass RLS
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Cliente Supabase con service role para bypass RLS (lazy initialization)
+let supabaseAdmin: SupabaseClient | null = null
+
+function getSupabaseAdmin(): SupabaseClient {
+  if (!supabaseAdmin) {
+    supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+  return supabaseAdmin
+}
 
 // Verificar webhook de PayPal usando el SDK oficial
 async function verifyPayPalWebhook(
@@ -158,7 +165,7 @@ export async function POST(request: NextRequest) {
       case 'BILLING.SUBSCRIPTION.CREATED':
         // Suscripción creada
         console.log('✅ Subscription created:', subscriptionId)
-        await supabase
+        await getSupabaseAdmin()
           .from('subscriptions')
           .update({
             status: 'active',
@@ -171,7 +178,7 @@ export async function POST(request: NextRequest) {
         // Suscripción activada (primer pago exitoso)
         console.log('✅ Subscription activated:', subscriptionId)
 
-        const { data: activatedResult, error: activatedError } = await supabase.rpc(
+        const { data: activatedResult, error: activatedError } = await getSupabaseAdmin().rpc(
           'update_subscription_status_webhook',
           {
             p_paypal_subscription_id: subscriptionId,
@@ -199,7 +206,7 @@ export async function POST(request: NextRequest) {
         // Suscripción cancelada por el usuario
         console.log('❌ Subscription cancelled:', subscriptionId)
 
-        const { data: cancelledResult, error: cancelledError } = await supabase.rpc(
+        const { data: cancelledResult, error: cancelledError } = await getSupabaseAdmin().rpc(
           'update_subscription_status_webhook',
           {
             p_paypal_subscription_id: subscriptionId,
@@ -222,7 +229,7 @@ export async function POST(request: NextRequest) {
         // Suscripción suspendida (falta de pago)
         console.log('⚠️ Subscription suspended:', subscriptionId)
 
-        const { data: suspendedResult, error: suspendedError } = await supabase.rpc(
+        const { data: suspendedResult, error: suspendedError } = await getSupabaseAdmin().rpc(
           'update_subscription_status_webhook',
           {
             p_paypal_subscription_id: subscriptionId,
@@ -245,7 +252,7 @@ export async function POST(request: NextRequest) {
         // Suscripción expirada
         console.log('⏰ Subscription expired:', subscriptionId)
 
-        const { data: expiredResult, error: expiredError } = await supabase.rpc(
+        const { data: expiredResult, error: expiredError } = await getSupabaseAdmin().rpc(
           'update_subscription_status_webhook',
           {
             p_paypal_subscription_id: subscriptionId,
@@ -272,7 +279,7 @@ export async function POST(request: NextRequest) {
         const nextBillingDate = new Date()
         nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
 
-        const { data: paymentResult, error: paymentError } = await supabase.rpc(
+        const { data: paymentResult, error: paymentError } = await getSupabaseAdmin().rpc(
           'update_subscription_status_webhook',
           {
             p_paypal_subscription_id: subscriptionId,

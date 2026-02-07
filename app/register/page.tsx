@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Loader2, Brain, Sparkles, Globe, DollarSign } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { z } from 'zod'
 
 // Especialidades que coinciden con el marketplace
 const SPECIALIZATIONS = [
@@ -69,19 +70,32 @@ export default function RegisterCoachPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nationality, setNationality] = useState('')
-  
+
   // Datos profesionales
   const [specializations, setSpecializations] = useState<string[]>([])
   const [languages, setLanguages] = useState<string[]>(['Español'])
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [bio, setBio] = useState('')
   const [yearsExperience, setYearsExperience] = useState('')
-  
+
   // Precios
   const [minRate, setMinRate] = useState('')
   const [maxRate, setMaxRate] = useState('')
   const [currency, setCurrency] = useState('USD')
-  
+
+  // Seguridad (Honeypot)
+  const [website, setWebsite] = useState('')
+
+  // Schema Zod
+  const registerSchema = z.object({
+    name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+    email: z.string().email('Email inválido'),
+    password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+    nationality: z.string().min(1, 'Selecciona tu nacionalidad'),
+    specializations: z.array(z.string()).min(1, 'Selecciona al menos una especialización'),
+    languages: z.array(z.string()).min(1, 'Selecciona al menos un idioma'),
+  })
+
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -106,30 +120,28 @@ export default function RegisterCoachPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validaciones
-    if (specializations.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Campos requeridos',
-        description: 'Por favor selecciona al menos una especialización',
-      })
+    // Verificación Honeypot (Anti-bot)
+    if (website) {
+      console.log('Bot detected via honeypot')
+      setIsLoading(false)
       return
     }
 
-    if (languages.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Campos requeridos',
-        description: 'Por favor selecciona al menos un idioma',
-      })
-      return
-    }
+    // Validación Zod
+    const validationResult = registerSchema.safeParse({
+      name,
+      email,
+      password,
+      nationality,
+      specializations,
+      languages
+    })
 
-    if (!nationality) {
+    if (!validationResult.success) {
       toast({
         variant: 'destructive',
-        title: 'Campo requerido',
-        description: 'Por favor selecciona tu nacionalidad',
+        title: 'Error de validación',
+        description: validationResult.error.errors[0].message,
       })
       return
     }
@@ -196,10 +208,10 @@ export default function RegisterCoachPage() {
         // Crear o actualizar coach_profile con todos los datos
         await new Promise(resolve => setTimeout(resolve, 500))
 
-        const sessionRate = minRate && maxRate 
+        const sessionRate = minRate && maxRate
           ? (parseFloat(minRate) + parseFloat(maxRate)) / 2
           : minRate ? parseFloat(minRate)
-          : 0
+            : 0
 
         // Verificar si el perfil ya existe (creado por trigger)
         const { data: existingProfile } = await supabase
@@ -230,7 +242,7 @@ export default function RegisterCoachPage() {
             .from('coach_profiles')
             .update(profileData)
             .eq('user_id', authData.user.id)
-          
+
           profileError = error
           if (!error) {
             console.log('✅ Coach profile actualizado exitosamente')
@@ -243,7 +255,7 @@ export default function RegisterCoachPage() {
               user_id: authData.user.id,
               ...profileData
             })
-          
+
           profileError = error
           if (!error) {
             console.log('✅ Coach profile creado exitosamente')
@@ -290,7 +302,7 @@ export default function RegisterCoachPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12 px-4">
       <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
-      
+
       <div className="max-w-4xl mx-auto relative z-10">
         <Card className="border-purple-500/20 bg-slate-900/90 backdrop-blur-xl">
           <CardHeader className="text-center space-y-2">
@@ -306,6 +318,19 @@ export default function RegisterCoachPage() {
           </CardHeader>
 
           <form onSubmit={handleRegister}>
+            {/* Honeypot Field */}
+            <div className="absolute opacity-0 -z-10 w-0 h-0 overflow-hidden">
+              <label htmlFor="website-hp">Website</label>
+              <input
+                id="website-hp"
+                type="text"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </div>
+
             <CardContent className="space-y-6">
               {/* Sección 1: Datos Básicos */}
               <div className="space-y-4">
