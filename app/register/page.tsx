@@ -180,10 +180,10 @@ export default function RegisterCoachPage() {
       if (authData.user) {
         await new Promise(resolve => setTimeout(resolve, 1000))
 
-        // Crear usuario en tabla users
+        // Check if user exists in public.users table
         const { data: existingUser, error: checkError } = await supabase
           .from('users')
-          .select('id')
+          .select('id, user_type, role')
           .eq('id', authData.user.id)
           .maybeSingle()
 
@@ -202,6 +202,22 @@ export default function RegisterCoachPage() {
 
           if (insertError) {
             console.error('Error creating user profile:', insertError)
+          }
+        } else if (existingUser) {
+          // If user exists but not properly set as coach, update both fields
+          if (existingUser.user_type !== 'coach' || existingUser.role !== 'coach') {
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({
+                role: 'coach',
+                user_type: 'coach',
+                full_name: name,
+              })
+              .eq('id', authData.user.id)
+
+            if (updateError) {
+              console.error('Error updating user type:', updateError)
+            }
           }
         }
 
