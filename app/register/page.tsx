@@ -184,13 +184,33 @@ export default function RegisterCoachPage() {
     setIsLoading(true)
 
     try {
+      // Calcular tarifa promedio
+      const sessionRate = minRate && maxRate
+        ? (parseFloat(minRate) + parseFloat(maxRate)) / 2
+        : minRate ? parseFloat(minRate)
+          : 0
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            name,
+            full_name: name,
+            name: name, // Mantener ambos por compatibilidad
             nationality,
+            user_type: 'coach',
+            role: 'coach',
+            // Metadata para creación automática de perfil (ver trigger handle_new_user)
+            tagline: `Coach profesional de ${specializations[0]}`,
+            bio: bio || `Coach certificado con experiencia en ${specializations.join(', ')}`,
+            specializations,
+            languages,
+            years_experience: yearsExperience ? parseInt(yearsExperience) : 0,
+            session_rate: sessionRate,
+            currency,
+            linkedin_url: linkedinUrl || null,
+            is_public: true,
+            availability_status: 'available',
           },
           emailRedirectTo: `${window.location.origin}/dashboard`,
         },
@@ -213,116 +233,6 @@ export default function RegisterCoachPage() {
       }
 
       if (authData.user) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // Check if user exists in public.users table
-        const { data: existingUser, error: checkError } = await supabase
-          .from('users')
-          .select('id, user_type, role')
-          .eq('id', authData.user.id)
-          .maybeSingle()
-
-        if (!existingUser && !checkError) {
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert({
-              id: authData.user.id,
-              email,
-              full_name: name,
-              role: 'coach',
-              user_type: 'coach',
-              subscription_plan: 'starter',
-              subscription_status: 'trial',
-            })
-
-          if (insertError) {
-            console.error('Error creating user profile:', insertError)
-          }
-        } else if (existingUser) {
-          // If user exists but not properly set as coach, update both fields
-          if (existingUser.user_type !== 'coach' || existingUser.role !== 'coach') {
-            const { error: updateError } = await supabase
-              .from('users')
-              .update({
-                role: 'coach',
-                user_type: 'coach',
-                full_name: name,
-              })
-              .eq('id', authData.user.id)
-
-            if (updateError) {
-              console.error('Error updating user type:', updateError)
-            }
-          }
-        }
-
-        // Crear o actualizar coach_profile con todos los datos
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        const sessionRate = minRate && maxRate
-          ? (parseFloat(minRate) + parseFloat(maxRate)) / 2
-          : minRate ? parseFloat(minRate)
-            : 0
-
-        // Verificar si el perfil ya existe (creado por trigger)
-        const { data: existingProfile } = await supabase
-          .from('coach_profiles')
-          .select('id')
-          .eq('user_id', authData.user.id)
-          .maybeSingle()
-
-        const profileData = {
-          display_name: name,
-          tagline: `Coach profesional de ${specializations[0]}`,
-          bio: bio || `Coach certificado con experiencia en ${specializations.join(', ')}`,
-          specializations: specializations,
-          languages: languages,
-          years_experience: yearsExperience ? parseInt(yearsExperience) : 0,
-          session_rate: sessionRate,
-          currency: currency,
-          linkedin_url: linkedinUrl || null,
-          is_public: true,
-          availability_status: 'available',
-        }
-
-        let profileError = null
-
-        if (existingProfile) {
-          // Actualizar perfil existente (creado por trigger)
-          const { error } = await supabase
-            .from('coach_profiles')
-            .update(profileData)
-            .eq('user_id', authData.user.id)
-
-          profileError = error
-          if (!error) {
-            console.log('✅ Coach profile actualizado exitosamente')
-          }
-        } else {
-          // Crear nuevo perfil si no existe
-          const { error } = await supabase
-            .from('coach_profiles')
-            .insert({
-              user_id: authData.user.id,
-              ...profileData
-            })
-
-          profileError = error
-          if (!error) {
-            console.log('✅ Coach profile creado exitosamente')
-          }
-        }
-
-        if (profileError) {
-          console.error('Error con coach profile:', profileError)
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Hubo un problema al crear tu perfil de coach',
-          })
-          return
-        }
-
         if (authData.session) {
           toast({
             title: '¡Bienvenido!',

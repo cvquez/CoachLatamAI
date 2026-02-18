@@ -269,7 +269,7 @@ export default function LoginPage() {
                   </Link>
                   <span className="text-muted-foreground">|</span>
                   <Link href="/register" className="text-purple-600 hover:underline font-medium">
-                    Soy Coach
+                    Quiero ser Coach
                   </Link>
                 </div>
               </div>
